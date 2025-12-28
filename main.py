@@ -270,7 +270,7 @@ def checkin():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    bike_list = [row[0] for row in values]
+    bike_list = [int(row[0]) for row in values]
     if bike in bike_list:
         bike_idx = bike_list.index(bike)
     else:
@@ -653,43 +653,45 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
                 }],
                 "fields": "userEnteredValue"
             }
-        },
-
-        # Insert new row in helmet log
-        {
-            "insertDimension": {
-                "range": {
-                    "sheetId": bike_sheet_dict["HelmetLog"],
-                    "dimension": "ROWS",
-                    "startIndex": 1,
-                    "endIndex": 2
-                },
-                "inheritFromBefore": False
-            }
-        },
-
-        # Update helmet log
-        {
-            "updateCells": {
-                "range": {
-                    "sheetId": bike_sheet_dict["HelmetLog"],
-                    "startRowIndex": 1,
-                    "endRowIndex": 2,
-                    "startColumnIndex": 0,
-                    "endColumnIndex": 4
-                },
-                "rows": [{
-                    "values": [
-                        {"userEnteredValue": {"numberValue": helmetid}},
-                        {"userEnteredValue": {"stringValue": now.strftime("%m/%d/%Y %H:%M:%S")}},
-                        {"userEnteredValue": {"stringValue": user_info[0]}},
-                        {"userEnteredValue": {"stringValue": "Checked-out"}}
-                    ]
-                }],
-                "fields": "userEnteredValue"
-            }
         }
     ]
+    if helmetid != -1:
+        requests.extend([
+            # Insert new row in helmet log
+            {
+                "insertDimension": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "dimension": "ROWS",
+                        "startIndex": 1,
+                        "endIndex": 2
+                    },
+                    "inheritFromBefore": False
+                }
+            },
+
+            # Update helmet log
+            {
+                "updateCells": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "startRowIndex": 1,
+                        "endRowIndex": 2,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 4
+                    },
+                    "rows": [{
+                        "values": [
+                            {"userEnteredValue": {"numberValue": helmetid}},
+                            {"userEnteredValue": {"stringValue": now.strftime("%m/%d/%Y %H:%M:%S")}},
+                            {"userEnteredValue": {"stringValue": user_info[0]}},
+                            {"userEnteredValue": {"stringValue": "Checked-out"}}
+                        ]
+                    }],
+                    "fields": "userEnteredValue"
+                }
+            }
+        ])
 
     sheet.batchUpdate(
         spreadsheetId=SPREADSHEET_ID,
