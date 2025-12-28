@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- critical -->
+    <title>Simple Text Sender</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 5vw;
+            font-size: 4vw; /* scales with screen width */
+        }
+
+        h3 {
+            font-size: 5vw; /* scale heading size */
+        }
+        h4 {
+            font-size: 4vw;
+            margin-top: 2vw;
+            margin-bottom: 1vw;   /* reduce spacing after textboxA */
+        }
+
+        textarea {
+            width: 100%;
+            height: 10vh;        /* fills large portion of screen vertically */
+            font-size: 4vw;       /* scale text size */
+            padding: 2vw;
+            box-sizing: border-box;
+            border-radius: 2vw;
+            border: 1px solid #999;
+            resize: vertical;         /* prevents weird resizing on mobile */
+        }
+
+        button {
+            margin-top: 4vw;
+            padding: 3vw 5vw;
+            font-size: 4vw;
+            border-radius: 2vw;
+            border: none;
+            background: #4a90e2;
+            color: white;
+            width: 100%;          /* full-width button */
+        }
+        .dropdown {
+            width: 100%;
+            padding: 2vw;
+            font-size: 4vw;
+            border-radius: 2vw;
+            border: 1px solid #999;
+            margin-top: 3vw;
+            background-color: white; /* optional */
+        }
+
+        #response {
+            margin-top: 4vw;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 4vw;      /* scales with screen width on mobile */
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        .file-input {
+            width: 100%;
+            font-size: 4vw;          /* scales with screen width */
+            margin-top: 4vw;
+        }
+
+        /* Optional: slightly nicer on modern browsers */
+        .file-input::file-selector-button {
+            font-size: 4vw;
+            padding: 2vw 4vw;
+            border-radius: 2vw;
+            border: none;
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        /* Fallback for older mobile browsers */
+        .file-input::-webkit-file-upload-button {
+            font-size: 4vw;
+            padding: 2vw 4vw;
+        }
+        .form-control {
+            width: 100%;
+            margin-top: 4vw;   /* THIS is the spacing */
+        }
+        #overlaySpinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7); /* semi-transparent overlay */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* make sure it’s above everything */
+        }
+
+        .spinner {
+            border: 0.6vw solid #f3f3f3;
+            border-top: 0.6vw solid #4a90e2;
+            border-radius: 50%;
+            width: 10vw;
+            height: 10vw;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+
+<body>
+    <h3 id = "toptext">Loading</h3>
+    <h4 id = "textboxA"></h4>
+    <table id = "bikeTable">    </table>
+    <input
+        type="file"
+        id="photoInput"
+        name="image"
+        accept="image/*"
+        class="file-input"
+        style = "display:none"
+    />
+
+    <textarea id="input" class="form-control" style="display: none;"></textarea>
+    <button id = "buttonA" style="display: none;">Submit</button>
+
+
+    <h4 id = "textboxB"></h4>
+    <textarea id="inputB" style="display: none;"></textarea>
+
+
+    
+    <select id="mySelect" class="dropdown" style="display: none;">
+        <option value="None">None</option>
+    </select>
+    <button id = "buttonB" style="display: none;">Submit</button> 
+    <div id="overlaySpinner" style="display:none;">
+        <div class="spinner"></div>
+    </div>
+
+ 
+
+
+
+    
+
+    <script>
+        function fillDropdown(length, text = "None") {
+            const select = document.getElementById("mySelect");
+            const option = document.createElement("option");
+            select.innerHTML = "";
+            option.value = -1;
+            option.textContent = text;
+            select.appendChild(option);
+
+
+            for (let i = 1; i <= length; i++) {
+                const option = document.createElement("option");
+                option.value = i;
+                option.textContent = i;
+                select.appendChild(option);
+            }
+        }
+        function fetchWithTimeout(url, options = {}, timeout = 10000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+
+            return fetch(url, {
+                ...options,
+                signal: controller.signal
+            })
+            .then(res => {
+                clearTimeout(id);
+                if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+                return res.json();
+            })
+            .catch(err => {
+                clearTimeout(id);
+                if (err.name === "AbortError") {
+                    throw new Error("Request timed out");
+                }
+                throw err;
+            });
+        }
+
+        /* This function loads the page with data */
+        function populatePage()
+        {
+
+            const urlParams = new URLSearchParams(window.location.search);
+            //The url having ?bike=# tells which bike it is for
+            const bike = Number(urlParams.get("bike"));   // "1" through "10"
+
+            const verificationCode = urlParams.get("code");   // "1" through "10"
+            const email = urlParams.get("email") ? decodeURIComponent(urlParams.get("email")) : "";
+            const vp = urlParams.get("vp");
+
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            if(vp || email || verificationCode){
+                verificationPage(email,verificationCode) //THIS IS WHERE YOU ARE WORKING
+            }
+            else if(bike) {
+                bikeSpecificPage(bike)
+            } else{
+                bikeTablePage()
+                
+            }
+        }
+
+
+        function bikeSpecificPage(bike)
+        {
+            const overlay = document.getElementById("overlaySpinner");
+
+            document.getElementById("toptext").innerText = `Billiken Bike #${bike}`;
+                document.getElementById("textboxA").innerText = "Loading..."
+                
+
+                fetchWithTimeout("/status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ bikeid: bike })
+                }).then(data =>{
+                        overlay.style.display = "none";
+
+                //How we populate the page for bike info
+                
+                    //Bike status of 0, 1, or 2.
+                    //0 is ready to be checked out, display boxes
+                    //1 is checked out, display 2 buttons
+                    //2 is out for other reasons, simply display message (includes bike doesn't exist)
+                    if(data.status == 0){
+                        document.getElementById("toptext").innerText = `Billiken Bike #${bike} is available`;
+                        document.getElementById("textboxA").innerHTML = data.text1//`To check out the bike enter your SLU email in the textbox in the format:<br></br> john.smith@slu.edu`;
+                        document.getElementById("input").style.display = "block";
+                        document.getElementById("textboxB").innerText = `If checking out helmet enter helmet number`;
+                        fillDropdown(data.helmetMax);
+                        const dropdown = document.getElementById("mySelect");
+
+                        dropdown.style.display = "block";
+                        const textboxB = document.getElementById("textboxB");
+                        textboxB.parentNode.insertBefore(textboxB, dropdown );
+
+                        const button2 = document.getElementById("buttonB")
+                        button2.innerText = "Submit"
+                        button2.style.display = "block";
+                        button2.onclick = () => checkOut(bike);
+
+                    }
+                    if(data.status == 1){
+                       document.getElementById("toptext").innerText = `Billiken Bike #${bike} is checked-out`;
+                        document.getElementById("textboxA").innerHTML = data.text1//`To check the bike back in press the button below <br></br>
+                        //If there are any mechanical issues to report enter them in the box below`;
+                        document.getElementById("photoInput").style.display = "block";
+
+                        const input = document.getElementById("input");
+                        input.style.display = "block";
+                        input.style.height = "30vh";
+                        input.placeholder = "Describe any issues here (or leave blank if none)"
+                        fillDropdown(data.helmetMax, "Enter helmet # here (If used)");
+                        const dropdown = document.getElementById("mySelect");
+
+                        dropdown.style.display = "block";
+
+                        input.parentNode.insertBefore(dropdown, input);
+
+
+                        const buttonA = document.getElementById("buttonA");
+                        buttonA.style.display = "block";
+                        buttonA.innerText = "Check-in";
+                        buttonA.onclick = () => checkIn(bike,false);
+                        document.getElementById("textboxB").innerText = data.text2//`If you have not checked out the bike but this bike is returned press below to report`;
+                        const buttonB = document.getElementById("buttonB");
+                        buttonB.style.display = "block";
+                        buttonB.innerText = "Report bike as returned";
+                        buttonB.onclick = () => checkIn(bike,true);
+
+                    }
+                    if(data.status == 2){
+                        document.getElementById("toptext").innerText = `Billiken Bike #${bike} is ${data.statusText}`;
+                        document.getElementById("textboxA").innerHTML = data.text1;
+                    }
+                }).catch(err => {
+                    overlay.style.display = "none";
+                    document.getElementById("textboxA").innerText = `ERROR loading bike info: ${err.message}`;
+                    console.error(err);
+                });
+        }
+
+        
+
+        function verificationPage(email, verificationCode)
+        {
+            const overlay = document.getElementById("overlaySpinner");
+
+            overlay.style.display = "none";
+
+            if(verificationCode && email){
+                document.getElementById("input").value = email;
+            document.getElementById("inputB").value = verificationCode;
+                submitVerify()
+            }
+            else{
+                document.getElementById("toptext").innerText = `Email Verification Page`;
+                document.getElementById("textboxA").innerText = "Enter SLU Email:";
+                document.getElementById("input").style.display = "block";
+                document.getElementById("input").value = email || "";
+                
+                document.getElementById("textboxB").innerText = "Enter Verification Code:";
+                document.getElementById("inputB").style.display = "block";
+                document.getElementById("inputB").value = verificationCode || "";
+
+                document.getElementById("buttonB").style.display = "block";
+                document.getElementById("buttonB").onclick = submitVerify;
+
+            }
+        }
+
+        function submitVerify()
+        {
+            const email = document.getElementById("input").value;
+            const verificationCode = document.getElementById("inputB").value;
+
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+            fetchWithTimeout("/submitVerify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, verificationCode })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+                document.getElementById("input").style.display = "none";
+                document.getElementById("textboxB").innerText = "";
+                document.getElementById("inputB").style.display = "none";
+                document.getElementById("buttonB").style.display = "none";
+                document.getElementById("input").value = "";
+                document.getElementById("inputB").value = "";
+
+
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with verification: ${err.message}`;
+                console.error(err);
+            });
+        }
+
+        function bikeTablePage() 
+        {
+            //This is to load the page without a bike id
+                const overlay = document.getElementById("overlaySpinner");
+
+                document.getElementById("toptext").innerText = "Billiken Bike List";
+                document.getElementById("textboxA").innerText = "Loading..."
+
+                fetchWithTimeout("/table").then(data =>{
+                    // If there is no bike id then do this with data
+                    overlay.style.display = "none";
+
+                    document.getElementById("textboxA").innerText = `Status at: ${data.time}`;
+                    const table = document.getElementById("bikeTable");
+                    table.innerHTML = `
+                        <thead>
+                            <tr>
+                                <th>Bike #</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    `;
+                    const tbody = table.querySelector('tbody'); 
+                    
+                    const bike_list = data.bike_list
+                    const select = document.getElementById("mySelect");
+                    select.innerHTML = "";
+                    bike_list.forEach(b => {
+                        const row = document.createElement("tr");
+                        const option = document.createElement("option");
+                        row.innerHTML = `<td>${b.id}</td><td style="background-color: ${b.color};">${b.status}</td>`;                        
+                        tbody.appendChild(row); // Append to the <tbody>
+                        
+                        option.value = b.id;
+                        option.textContent = b.id;
+                        select.appendChild(option);
+                    })
+                    document.getElementById("textboxB").innerText = "To check out a bike select the ID and go to the page";
+                    select.style.display = "block";
+                    const button2 = document.getElementById("buttonB")
+                    button2.innerText = "Go To Bike Page"
+                    button2.style.display = "block";
+                    button2.onclick = goToBikePage;
+                    return;
+
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR loading bike list: ${err.message}`;
+                console.error(err);
+            });
+        }
+
+        function checkOut(bike){
+            const button = document.getElementById("buttonB"); // or buttonA
+            button.disabled = true;
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+            
+
+
+            const select = document.getElementById("mySelect");
+            const email = document.getElementById("input").value.trim();
+            const helmet = select.value;
+            if (!email){
+                overlay.style.display = "none";
+                button.disabled = false;
+
+                alert("Please enter your email to check out."); // optional
+                return;
+            }
+
+           fetchWithTimeout("/checkOut", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ emailCheckOut: email, bikeCheckOut: bike, helmetCheckOut: helmet })
+            }).then(data =>{
+                button.disabled = false;
+                overlay.style.display = "none";
+
+                document.getElementById("input").style.display = "none";
+                document.getElementById("textboxB").innerText = "";
+                document.getElementById("buttonB").style.display = "none";
+                select.style.display = "none";
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+        }).catch(err => {
+                overlay.style.display = "none";
+                button.disabled = false;
+                document.getElementById("toptext").innerText = `ERROR Checkout failed: ${err.message}`;
+                console.error(err);
+            });
+        }
+
+        function checkIn(bike, bciw){
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const button2 = document.getElementById("buttonB"); // or buttonA
+            const button1 = document.getElementById("buttonA");
+            button2.disabled = true;
+            button1.disabled = true;
+            const formData = new FormData();
+            const photoInput = document.getElementById("photoInput");
+            const select = document.getElementById("mySelect");
+            const mechanicalIssues = document.getElementById("input").value;
+            const helmet = select.value;
+
+            if (!bciw && photoInput.files.length === 0) {
+                overlay.style.display = "none";
+                alert("Please take a photo of the bike before checking it in.");
+                photoInput.focus();
+                button2.disabled = false;
+                button1.disabled = false;
+                return;
+            }
+
+            formData.append("bikeCheckIn", bike);
+            formData.append("BikeCheckedInWrong", bciw);
+            formData.append("mechanicalCheckIn", mechanicalIssues);
+            formData.append("helmetCheckIn", helmet);
+            if (photoInput.files.length > 0) {
+                formData.append("photo", photoInput.files[0]);
+            }
+
+            fetchWithTimeout("/checkIn", {
+                method: "POST",
+                body: formData
+            }).then(data => {
+                overlay.style.display = "none";
+                button2.disabled = false;
+                button1.disabled = false;
+                document.getElementById("buttonA").style.display = "none";
+                document.getElementById("textboxB").innerText = "";
+                document.getElementById("photoInput").style.display = "none";
+                document.getElementById("buttonB").style.display = "none";
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerText = data.textbox;
+                const select = document.getElementById("mySelect");
+                select.style.display = "none";
+                document.getElementById("input").style.display = "none";
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("buttonA").disabled = false;
+                document.getElementById("buttonB").disabled = false;
+                document.getElementById("toptext").innerText = `ERROR Checkin failed: ${err.message}`;
+                console.error(err);
+            });
+
+        }
+
+        function goToBikePage() {
+            const select = document.getElementById("mySelect");
+            const bike = Number(select.value);
+
+            if (!bike) return; // nothing selected
+            if (bike === -1) return;
+
+            // Redirect to the same page with ?bike=#
+            window.location.href = `?bike=${bike}`;
+        }
+
+
+        window.onload = populatePage;
+
+
+        
+    </script>
+</body>
+</html>
