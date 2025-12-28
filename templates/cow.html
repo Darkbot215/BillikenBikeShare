@@ -9,9 +9,9 @@
 
 
     <style>
-        :root{
-            --font-size-1: 7vw;
-            --font-size-2: 5vw;
+        :root {
+            --font-size-1: clamp(28px, 7vw, 55px);
+            --font-size-2: clamp(16px, 5vw, 32px);
         }
         body {
             font-family: Arial, sans-serif;
@@ -84,7 +84,7 @@
         .file-input {
             width: 100%;
             font-size: var(--font-size-2);          /* scales with screen width */
-            margin-top: 4vw;
+            /*margin-top: 2vw;*/
         }
 
         /* Optional: slightly nicer on modern browsers */
@@ -131,13 +131,85 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .page {
+            max-width: 900px;     /* desktop-friendly width */
+            margin: 0 auto;       /* center on desktop */
+        }
+        @media (min-width: 768px) {
+            body {
+                background-color: #a0c4e3; /* darker outside */
+                display: flex;
+                justify-content: center;   /* horizontal center */
+                align-items: flex-start;   /* vertical start, so content starts at top */
+                min-height: 100vh;         /* full height */
+                /*padding: 4vw 0;    */        /* vertical spacing from edges */
+            }
+
+            .page {
+                max-width: 900px;
+                width: 100%;
+                background-color: #e7f1fa; /* light blue inside */
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                padding: 24px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                margin: 0; /* handled by flex centering */
+            }
+            body {
+                padding: 24px;
+            }
+
+            #textboxA,
+            #textboxB {
+                margin-top: 16px;
+                margin-bottom: 16px;
+            }
+
+            .form-control {
+                margin-top: 16px;
+            }
+
+            button {
+                width: 100%;            /* stop full-width stretching */
+                display: block;         /* allows centering */
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: 16px;       /* reduce spacing above buttons */
+                padding: 12px 24px;     /* smaller padding than mobile */
+            }
+
+            textarea,
+            .dropdown,
+            .file-input {
+                padding: 12px;
+                border-radius: 10px;
+            }
+
+            h3 {
+                margin-bottom: 12px;
+            }
+             .file-input {
+                width: 100%;            /* smaller width on desktop */
+                margin-left: auto;
+                margin-right: auto;    /* center */
+                padding: 8px 16px;     /* shrink padding */
+                margin-top: 16px;      /* reduce spacing */
+            }
+
+            .file-input::file-selector-button,
+            .file-input::-webkit-file-upload-button {
+                padding: 8px 16px;     /* smaller button inside input */
+            }
+
+        }
     </style>
 </head>
 
 <body>
+    <div class = "page">
     <h3 id = "toptext">Loading</h3>
     <!--<h4 id = "textboxA"></h4>-->
-    <div id = "textboxA"></div></div>
+    <div id = "textboxA"></div>
     <table id = "bikeTable">    </table>
     <input
         type="file"
@@ -151,7 +223,7 @@
     <textarea id="input" class="form-control" style="display: none;"></textarea>
     <button id = "buttonA" style="display: none;">Submit</button>
 
-    <div id = "textboxB"></div></div>
+    <div id = "textboxB"></div>
 
     <!--<h4 id = "textboxB"></h4>-->
     <textarea id="inputB" style="display: none;"></textarea>
@@ -549,5 +621,6 @@
 
         
     </script>
+    </div>
 </body>
 </html>
