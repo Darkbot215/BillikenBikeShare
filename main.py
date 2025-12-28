@@ -8,10 +8,13 @@ import threading
 import yagmail
 from datetime import datetime, date, timedelta
 from random import randint
+from dotenv import load_dotenv
 
 #Set up google drive:
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+load_dotenv("passwords.env")
 
 yag = yagmail.SMTP(os.environ["EMAIL_USER"], os.environ["EMAIL_PASS"])
 
