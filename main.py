@@ -539,7 +539,7 @@ def timeExtractor(time):
     hour = int(time[time_indices[0] - 2:time_indices[0]])
     minute = int(time[time_indices[0] + 1:time_indices[1]])
     second = int(time[time_indices[1] + 1:time_indices[1] + 3])
-    temp = datetime(year, month, day, hour, minute, second)
+    temp = datetime(year, month, day, hour, minute, second, tzinfo=LOCAL_TZ)
     return temp
 
 def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
@@ -864,15 +864,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
                 if letter in code:
                     now = now_local()
                     hold_time = currentHold[7:]
-                    date_indices = [i for i, x in enumerate(hold_time) if x == ('/')]
-                    time_indices = [i for i, x in enumerate(hold_time) if x == (':')]
-                    year = int(hold_time[date_indices[1] + 1:date_indices[1] + 5])
-                    month = int(hold_time[0:date_indices[0]])
-                    day = int(hold_time[date_indices[0] + 1:date_indices[1]])
-                    hour = int(hold_time[time_indices[0] - 2:time_indices[0]])
-                    minute = int(hold_time[time_indices[0] + 1:time_indices[1]])
-                    second = int(hold_time[time_indices[1] + 1:time_indices[1] + 3])
-                    temp = datetime(year, month, day, hour, minute, second)
+                    temp = timeExtractor(hold_time)
                     if temp > now: #This tells it not to change the time
                         codeDict.update({letter: temp})
             options = ["L", "P"]
