@@ -9,6 +9,7 @@ import yagmail
 from datetime import datetime, date, timedelta
 from random import randint
 from dotenv import load_dotenv
+from zoneinfo import ZoneInfo
 
 #Set up google drive:
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -64,6 +65,10 @@ bikeForCheckoutText = "To check out the bike enter your SLU email in the textbox
 # Checkout bike = {emailCheckOut: email,bikeCheckOut: bike,helmetCheckOut:helmet}
 # Check in bike = {bikeCheckIn:bike, helmetCheckIn:helmet, mechanicalCheckIn:mechanicalIssues, BikeCheckedInWrong: bciw }
 
+LOCAL_TZ = ZoneInfo("America/Chicago")
+
+def now_local():
+    return datetime.now(LOCAL_TZ)
 
 @app.route("/table", methods=["GET"])
 def bike_table():
@@ -75,7 +80,7 @@ def bike_table():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", [])
-    now = datetime.now()
+    now = now_local()
     current_time = now.strftime("%I:%M %p")
     bikelist = []
     for row in values:
@@ -345,7 +350,7 @@ def verifyUser():
         "textbox": "You may have made a typo. <br> If you continue to have this error contact SLU on the Move"
     })
     user_info = values[email_idx]
-    now = datetime.now()
+    now = now_local()
     try:
         ver_time = user_info[6]
     except:
@@ -398,7 +403,7 @@ def verifyUser():
 
 
 def addUser(email):
-    now = datetime.now()
+    now = now_local()
     sheet = sheets_service.spreadsheets()
     epoch = date(1899, 12, 30)
     today = date.today()
@@ -492,7 +497,7 @@ def holdChecker(hold_code, max_amount, tempBan = True):
     if hold_code[0] == "#":
         code = hold_code[1:6]
         if "T" in code:
-            now = datetime.now()
+            now = now_local()
             hold_time = hold_code[7:]
             temp = timeExtractor(hold_time)
             if temp > now:
@@ -546,7 +551,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
     #Update helmet log
     hold = user_info[4]
     hold = holdUpdate(hold, "RU")
-    now = datetime.now()
+    now = now_local()
 
     requests = [
 
@@ -708,7 +713,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
     if hold_long_term:
         hold = holdUpdate(hold, holdToAdd="L")
     hold = holdUpdate(hold, holdToRemove="U")
-    now = datetime.now()
+    now = now_local()
 
     requests = [
 
@@ -857,7 +862,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
             options = ["T", "R"]
             for letter in options:
                 if letter in code:
-                    now = datetime.now()
+                    now = now_local()
                     hold_time = currentHold[7:]
                     date_indices = [i for i, x in enumerate(hold_time) if x == ('/')]
                     time_indices = [i for i, x in enumerate(hold_time) if x == (':')]
@@ -887,7 +892,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
     for item in holdToAdd:
         if item in codeDict.keys():
             if item == "R": #currently 'recently' counts as 30 minutes and so does temp ban
-                now = datetime.now()
+                now = now_local()
                 T_time = now + timedelta(minutes=tempBanTime)
                 codeDict.update({"T": T_time})
                 del codeDict["R"]
@@ -895,7 +900,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
                 codeDict[item] = codeDict[item] + 1
         else:
             if item == "T" or item == "R":
-                now = datetime.now()
+                now = now_local()
                 T_time = now + timedelta(minutes=tempBanTime)
                 codeDict.update({item: T_time})
             else:
@@ -928,7 +933,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx):
     if photo_path != "":
-        now = datetime.now()
+        now = now_local()
         contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
         yag.send(to="sluonthemove@slu.edu",subject = "Bikeshare Return Photo Bike #"+str(bike), contents = contents,  attachments = photo_path)
     #Here is where we can add an option for this to send issues
