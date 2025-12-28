@@ -58,7 +58,7 @@ app = Flask(__name__)
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
 helmetMax = 10
-bikeForCheckoutText = "To check out the bike enter your SLU email in the textbox in the format:<br> john.smith@slu.edu"
+bikeForCheckoutText = "To check out the bike enter your SLU email in the textbox in the format:<br> <b>john.smith@slu.edu</b>"
 
 # Populate Bike page (send bikeid)
 # Checkout bike = {emailCheckOut: email,bikeCheckOut: bike,helmetCheckOut:helmet}
@@ -183,7 +183,7 @@ def checkOut():
         else:
             return jsonify({
                 "topText": "New User Verification Fail",
-                "textbox": "The email you entered did not match the format: john.smith@slu.edu <br><br> For use with the bikeshare system it must be in that format <br>(NOT: jsmith01@slu.edu) <br><br> If you are having issues reach out to SLU on the Move <br><br> To retry simply reload the page"
+                "textbox": "The email you entered did not match the format: <b>john.smith@slu.edu</b> <br><br> For use with the bikeshare system it must be in that format <br>(NOT: jsmith01@slu.edu) <br><br> If you are having issues reach out to SLU on the Move <br><br> To retry simply reload the page"
             })
     #Now we are dealing with people in the user list! that is fun.
     #Main checks Are they verified, do they have a free ride - > have they paid ->
@@ -218,9 +218,7 @@ def checkOut():
     bike = int(data.get("bikeCheckOut", ""))
     helmet = data.get("helmetCheckOut", "")
     helmet = int(helmet)
-    print(helmet)
     bike_list = [int(row[0]) for row in values]
-    print(bike_list)
     if bike in bike_list:
         bike_idx = bike_list.index(bike)
         if values[bike_idx][1] == "Checked-in": #shit, we made it, we can check out
@@ -256,6 +254,7 @@ def checkin():
     bciw = request.form.get("BikeCheckedInWrong", "false").lower() == "true"
     issues = request.form.get("mechanicalCheckIn")
     helmet = request.form.get("helmetCheckIn")
+    helmet = int(helmet)
 
     photo = request.files.get("photo")  # may be None
     #Need to do 4 things
@@ -801,42 +800,44 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
                 "fields": "userEnteredValue"
             }
         },
-
-        # Insert new row in helmet log
-        {
-            "insertDimension": {
-                "range": {
-                    "sheetId": bike_sheet_dict["HelmetLog"],
-                    "dimension": "ROWS",
-                    "startIndex": 1,
-                    "endIndex": 2
-                },
-                "inheritFromBefore": False
-            }
-        },
-
-        # Update helmet log
-        {
-            "updateCells": {
-                "range": {
-                    "sheetId": bike_sheet_dict["HelmetLog"],
-                    "startRowIndex": 1,
-                    "endRowIndex": 2,
-                    "startColumnIndex": 0,
-                    "endColumnIndex": 4
-                },
-                "rows": [{
-                    "values": [
-                        {"userEnteredValue": {"numberValue": helmetid}},
-                        {"userEnteredValue": {"stringValue": now.strftime("%m/%d/%Y %H:%M:%S")}},
-                        {"userEnteredValue": {"stringValue": user_info[0]}},
-                        {"userEnteredValue": {"stringValue": "Checked-in"}}
-                    ]
-                }],
-                "fields": "userEnteredValue"
-            }
-        }
     ]
+
+    if helmetid != -1:
+        requests.extend([
+            # Insert new row in helmet log
+            {
+                "insertDimension": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "dimension": "ROWS",
+                        "startIndex": 1,
+                        "endIndex": 2
+                    },
+                    "inheritFromBefore": False
+                }
+            },
+
+            # Update helmet log
+            {
+                "updateCells": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "startRowIndex": 1,
+                        "endRowIndex": 2,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 4
+                    },
+                    "rows": [{
+                        "values": [
+                            {"userEnteredValue": {"numberValue": helmetid}},
+                            {"userEnteredValue": {"stringValue": now.strftime("%m/%d/%Y %H:%M:%S")}},
+                            {"userEnteredValue": {"stringValue": user_info[0]}},
+                            {"userEnteredValue": {"stringValue": "Checked-in"}}
+                        ]
+                    }],
+                    "fields": "userEnteredValue"
+                }
+            }])
 
     sheet.batchUpdate(
         spreadsheetId=SPREADSHEET_ID,

@@ -6,25 +6,35 @@
     <title>Simple Text Sender</title>
 
     <style>
+        :root{
+            --font-size-1: 7vw;
+            --font-size-2: 5vw;
+        }
         body {
             font-family: Arial, sans-serif;
             padding: 5vw;
-            font-size: 4vw; /* scales with screen width */
+            font-size: var(--font-size-2); /* scales with screen width */
+            background-color: #e7f1fa; /* light blue accent */
+
+        }
+        #textboxA, #textboxB {
+            margin-top: 3vw;   /* space above the box */
+            margin-bottom: 3vw; /* space below the box */
         }
 
+
         h3 {
-            font-size: 5vw; /* scale heading size */
+            font-size: var(--font-size-1); /* scale heading size */
         }
         h4 {
-            font-size: 4vw;
-            margin-top: 2vw;
-            margin-bottom: 1vw;   /* reduce spacing after textboxA */
+            font-size: var(--font-size-2);
+
         }
 
         textarea {
             width: 100%;
             height: 10vh;        /* fills large portion of screen vertically */
-            font-size: 4vw;       /* scale text size */
+            font-size: var(--font-size-2);       /* scale text size */
             padding: 2vw;
             box-sizing: border-box;
             border-radius: 2vw;
@@ -35,7 +45,7 @@
         button {
             margin-top: 4vw;
             padding: 3vw 5vw;
-            font-size: 4vw;
+            font-size: var(--font-size-2);
             border-radius: 2vw;
             border: none;
             background: #4a90e2;
@@ -45,7 +55,7 @@
         .dropdown {
             width: 100%;
             padding: 2vw;
-            font-size: 4vw;
+            font-size: var(--font-size-2);
             border-radius: 2vw;
             border: 1px solid #999;
             margin-top: 3vw;
@@ -58,7 +68,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 4vw;      /* scales with screen width on mobile */
+            font-size: var(--font-size-2);      /* scales with screen width on mobile */
         }
         th, td {
             border: 1px solid black;
@@ -70,13 +80,13 @@
         }
         .file-input {
             width: 100%;
-            font-size: 4vw;          /* scales with screen width */
+            font-size: var(--font-size-2);          /* scales with screen width */
             margin-top: 4vw;
         }
 
         /* Optional: slightly nicer on modern browsers */
         .file-input::file-selector-button {
-            font-size: 4vw;
+            font-size: var(--font-size-2);
             padding: 2vw 4vw;
             border-radius: 2vw;
             border: none;
@@ -86,7 +96,7 @@
 
         /* Fallback for older mobile browsers */
         .file-input::-webkit-file-upload-button {
-            font-size: 4vw;
+            font-size: var(--font-size-2);
             padding: 2vw 4vw;
         }
         .form-control {
@@ -123,7 +133,8 @@
 
 <body>
     <h3 id = "toptext">Loading</h3>
-    <h4 id = "textboxA"></h4>
+    <!--<h4 id = "textboxA"></h4>-->
+    <div id = "textboxA"></div></div>
     <table id = "bikeTable">    </table>
     <input
         type="file"
@@ -137,8 +148,9 @@
     <textarea id="input" class="form-control" style="display: none;"></textarea>
     <button id = "buttonA" style="display: none;">Submit</button>
 
+    <div id = "textboxB"></div></div>
 
-    <h4 id = "textboxB"></h4>
+    <!--<h4 id = "textboxB"></h4>-->
     <textarea id="inputB" style="display: none;"></textarea>
 
 
@@ -283,7 +295,7 @@
                         buttonA.style.display = "block";
                         buttonA.innerText = "Check-in";
                         buttonA.onclick = () => checkIn(bike,false);
-                        document.getElementById("textboxB").innerText = data.text2//`If you have not checked out the bike but this bike is returned press below to report`;
+                        document.getElementById("textboxB").innerHTML = "<b>"+ data.text2 + "</b>"//`If you have not checked out the bike but this bike is returned press below to report`;
                         const buttonB = document.getElementById("buttonB");
                         buttonB.style.display = "block";
                         buttonB.innerText = "Report bike as returned";
@@ -395,7 +407,7 @@
                     bike_list.forEach(b => {
                         const row = document.createElement("tr");
                         const option = document.createElement("option");
-                        row.innerHTML = `<td>${b.id}</td><td style="background-color: ${b.color};">${b.status}</td>`;                        
+                        row.innerHTML = `<td style="background-color: #FFFFFF;">${b.id}</td><td style="background-color: ${b.color};">${b.status}</td>`;                        
                         tbody.appendChild(row); // Append to the <tbody>
                         
                         option.value = b.id;
@@ -502,7 +514,7 @@
                 document.getElementById("photoInput").style.display = "none";
                 document.getElementById("buttonB").style.display = "none";
                 document.getElementById("toptext").innerText = data.topText;
-                document.getElementById("textboxA").innerText = data.textbox;
+                document.getElementById("textboxA").innerHTML = data.textbox;
                 const select = document.getElementById("mySelect");
                 select.style.display = "none";
                 document.getElementById("input").style.display = "none";
