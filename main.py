@@ -11,7 +11,6 @@ from random import randint
 from dotenv import load_dotenv
 
 #Set up google drive:
-
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
