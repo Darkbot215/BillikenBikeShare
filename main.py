@@ -307,10 +307,13 @@ def checkin():
         #Also a shitty error
     user_list = values
     photo_path = ""
-    if photo:
-        filename = photo.filename
-        photo_path = f"/tmp/{filename}"
-        photo.save(photo_path)  # or wherever
+    try:
+        if photo:
+            filename = photo.filename
+            photo_path = f"/tmp/{filename}"
+            photo.save(photo_path)  # or wherever
+    except Exception as e:
+        print("Error in checkout_async:", e)
 
     threading.Thread(
         target=checkin_async,
@@ -924,31 +927,33 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
     return ""
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx):
-    if photo_path != "":
-        now = now_local()
-        contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
-        yag.send(to="sluonthemove@slu.edu",subject = "Bikeshare Return Photo Bike #"+str(bike), contents = contents,  attachments = photo_path)
-    #Here is where we can add an option for this to send issues
-    if bciw:
-        yag.send(to=email,subject = "Forgotten Bike Return #"+str(bike),contents = "Your previously checked-out bike has been checked in by another user. Next time please don't forget to check-in your bike upon return")
-        yag.send(to="erictrmans@gmail.com", subject = "Forgotten Bike Return #"+str(bike), contents = "User "+email+" did not return their bike and it was marked as returned by another user")
-    else:
-        yag.send(to=email,subject = "Bike #"+str(bike)+" Return Confirmation",contents = "Your bike has been successfully checked-in! Thank you for using the bikeshare!")
-    driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
-
-
-    blank_issue_responses = {"", "none", "na", "n/a", "no", "nope", "nil", "ok", "okay", "fine", "good", "all good",
-                             "no issue", "no issues", "no problem", "no problems", "nothing", "nothing to report",
-                             "no issues noted", "everything is fine", }
-
-    if issues.strip().lower() not in blank_issue_responses:
-        #This means there is an issue to be reported and sent to email
-        contents = "Reported issue is: \n" +str(issues)+"Bike #"+str(bike)+" was checked in at "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n"
+    try:
         if photo_path != "":
-            yag.send(to="erictrmans@gmail.com",subject = "Reported Issue with Bike #"+str(bike),contents = contents + "Photo included", attachments = photo_path)
+            now = now_local()
+            contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
+            yag.send(to="sluonthemove@slu.edu",subject = "Bikeshare Return Photo Bike #"+str(bike), contents = contents,  attachments = photo_path)
+        #Here is where we can add an option for this to send issues
+        if bciw:
+            yag.send(to=email,subject = "Forgotten Bike Return #"+str(bike),contents = "Your previously checked-out bike has been checked in by another user. Next time please don't forget to check-in your bike upon return")
+            yag.send(to="erictrmans@gmail.com", subject = "Forgotten Bike Return #"+str(bike), contents = "User "+email+" did not return their bike and it was marked as returned by another user")
         else:
-            yag.send(to="erictrmans@gmail.com",subject = "Reported Issue with Bike #"+str(bike),contents = contents+"Photo was not included")
+            yag.send(to=email,subject = "Bike #"+str(bike)+" Return Confirmation",contents = "Your bike has been successfully checked-in! Thank you for using the bikeshare!")
+        driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
 
+
+        blank_issue_responses = {"", "none", "na", "n/a", "no", "nope", "nil", "ok", "okay", "fine", "good", "all good",
+                                 "no issue", "no issues", "no problem", "no problems", "nothing", "nothing to report",
+                                 "no issues noted", "everything is fine", }
+
+        if issues.strip().lower() not in blank_issue_responses:
+            #This means there is an issue to be reported and sent to email
+            contents = "Reported issue is: \n" +str(issues)+"Bike #"+str(bike)+" was checked in at "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n"
+            if photo_path != "":
+                yag.send(to="erictrmans@gmail.com",subject = "Reported Issue with Bike #"+str(bike),contents = contents + "Photo included", attachments = photo_path)
+            else:
+                yag.send(to="erictrmans@gmail.com",subject = "Reported Issue with Bike #"+str(bike),contents = contents+"Photo was not included")
+    except Exception as e:
+        print("Error in checkout_async:", e)
 
 @app.route("/")
 def index():
