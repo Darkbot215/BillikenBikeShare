@@ -10,7 +10,13 @@ from datetime import datetime, date, timedelta
 from random import randint
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
+import socket
 
+try:
+    socket.create_connection(("smtp.gmail.com", 587), timeout=5)
+    print("SMTP reachable")
+except OSError as e:
+    print("Network error:", e)
 #Set up google drive:
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
