@@ -15,6 +15,7 @@ from datetime import datetime, date, timedelta
 from random import randint
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
+from email_validator import validate_email, EmailNotValidError
 
 
 #Set up google drive:
@@ -485,6 +486,10 @@ def addUser(email):
 def emailChecker(email,on = True):
     period = False
     emailLegit = False
+    try:
+        validate_email(email)
+    except EmailNotValidError:
+        return False
     for i in range(len(email)):
         if email[i] == ".":
             period = True
@@ -1003,7 +1008,6 @@ def send_gmail(service,to,subject,html_contents,attachments=None):
         userId="me",
         body={"raw": raw}
     ).execute()
-
 
 
 @app.route("/")
