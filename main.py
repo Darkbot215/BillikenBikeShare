@@ -4,50 +4,50 @@ import os
 import json, base64
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 import threading
-import yagmail
+import mimetypes
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from datetime import datetime, date, timedelta
 from random import randint
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
-import socket
 
-try:
-    socket.create_connection(("smtp.gmail.com", 587), timeout=5)
-    print("SMTP reachable")
-except OSError as e:
-    print("Network error:", e)
+
 #Set up google drive:
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 load_dotenv("passwords.env")
 
-yag = yagmail.SMTP(os.environ["EMAIL_USER"], os.environ["EMAIL_PASS"])
-
-
 def get_credentials():
-    # Load service account JSON from environment variable
-    #service_account_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_KEY"])
-
     service_account_info = json.loads(base64.b64decode(os.environ["GOOGLE_CREDS_BASE64"]))
-    # IMPORTANT:
-    # Use the UNION of all scopes you need across APIs
     all_scopes = list(set(DRIVE_SCOPES + SHEETS_SCOPES))
-
-    creds = service_account.Credentials.from_service_account_info(
+    drive_creds = service_account.Credentials.from_service_account_info(
         service_account_info,
         scopes=all_scopes
     )
-    return creds
+    gmail_creds = Credentials(
+        token=None,
+        refresh_token= os.environ["EMAIL_REFRESH_TOKEN"],
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=os.environ["EMAIL_CLIENT_ID"],
+        client_secret=os.environ["EMAIL_CLIENT_SECRET"],
+        scopes=["https://www.googleapis.com/auth/gmail.send"],
+    )
+    return {"drive":drive_creds,"gmail":gmail_creds}
 
 creds = get_credentials()
 
 # ------------------------------------
 # GOOGLE DRIVE CLIENT
 # ------------------------------------
-drive_service = build("drive", "v3", credentials=creds)
-sheets_service = build("sheets", "v4", credentials=creds)
+drive_service = build("drive", "v3", credentials=creds["drive"])
+sheets_service = build("sheets", "v4", credentials=creds["drive"])
+gmail_service = build("gmail","v1", credentials=creds["gmail"])
 SPREADSHEET_ID = "1o-r-D--evfEa3iHuViri5V3fb33a7iv_Op4IspKnO-0"
 
 
@@ -240,11 +240,7 @@ def checkOut():
                     +str(values[bike_idx][2])+ "\n\n"
                     "Don't forget to check your bike back in within 24 hours by scanning the QR code! "
             )
-            yag.send(
-                to=email,
-                subject = "Billiken Bikeshare Unlock Code: " + str(values[bike_idx][2]),
-                contents = message_body
-            )
+            send_gmail(gmail_service,email,"Billiken Bikeshare Unlock Code: " + str(values[bike_idx][2]),message_body)
             return jsonify({
                 "topText": "The bike has been successfully checked-out",
                 "textbox": "Check your email for the bike unlock code <br><br> If you are having issues reach out to SLU on the Move"
@@ -327,7 +323,7 @@ def checkin():
             bike, bciw, issues, helmet, photo_path, email,
             user_list, email_idx, bike_idx
         ),
-        daemon=True
+        daemon=False
     ).start()
 
     return jsonify({
@@ -479,7 +475,7 @@ def addUser(email):
             "https://your-site.com/verify?email=" + email + "&code=" + str(verification_code) + "\n\n"
                                                                                                 "Or enter your code and email on this webpage:https://your-site.com/verify "
     )
-    yag.send(to = email, subject = "Billiken Bikeshare Verification Code: " + str(verification_code), contents = message_body)
+    send_gmail(gmail_service,email,"Billiken Bikeshare Verification Code: " + str(verification_code),message_body)
 
 def emailChecker(email,on = True):
     period = False
@@ -937,13 +933,14 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
         if photo_path != "":
             now = now_local()
             contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
-            yag.send(to="sluonthemove@slu.edu",subject = "Bikeshare Return Photo Bike #"+str(bike), contents = contents,  attachments = photo_path)
+            send_gmail(gmail_service,"sluonthemove@slu.edu","Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
         if bciw:
-            yag.send(to=email,subject = "Forgotten Bike Return #"+str(bike),contents = "Your previously checked-out bike has been checked in by another user. Next time please don't forget to check-in your bike upon return")
-            yag.send(to="erictrmans@gmail.com", subject = "Forgotten Bike Return #"+str(bike), contents = "User "+email+" did not return their bike and it was marked as returned by another user")
+            send_gmail(gmail_service,email,"Forgotten Bike Return #"+str(bike),
+                       "Your previously checked-out bike has been checked in by another user. Next time please don't forget to check-in your bike upon return")
+            send_gmail(gmail_service,"erictrmans@gmail.com","Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
-            yag.send(to=email,subject = "Bike #"+str(bike)+" Return Confirmation",contents = "Your bike has been successfully checked-in! Thank you for using the bikeshare!")
+            send_gmail(gmail_service,email,"Bike #"+str(bike)+" Return Confirmation","Your bike has been successfully checked-in! Thank you for using the bikeshare!")
         driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
 
 
@@ -955,11 +952,51 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             #This means there is an issue to be reported and sent to email
             contents = "Reported issue is: \n" +str(issues)+"Bike #"+str(bike)+" was checked in at "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n"
             if photo_path != "":
-                yag.send(to="erictrmans@gmail.com",subject = "Reported Issue with Bike #"+str(bike),contents = contents + "Photo included", attachments = photo_path)
+                send_gmail(gmail_service,"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
             else:
-                yag.send(to="erictrmans@gmail.com",subject = "Reported Issue with Bike #"+str(bike),contents = contents+"Photo was not included")
+                send_gmail(gmail_service,"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
+
+def send_gmail(service,to,subject,html_contents,attachments=None):
+    if attachments is None:
+        attachments = []
+    elif isinstance(attachments, str):
+        attachments = [attachments]
+
+    # Root message
+    msg = MIMEMultipart()
+    msg["To"] = to
+    msg["From"] = "me"
+    msg["Subject"] = subject
+
+    # HTML body
+    msg.attach(MIMEText(html_contents, "html"))
+    # Attachments
+    for path in attachments:
+        content_type, encoding = mimetypes.guess_type(path)
+        if content_type is None:
+            content_type = "application/octet-stream"
+
+        main_type, sub_type = content_type.split("/", 1)
+
+        with open(path, "rb") as f:
+            part = MIMEBase(main_type, sub_type)
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        filename = path.split("/")[-1]
+        part.add_header(
+            "Content-Disposition",
+            f'attachment; filename="{filename}"'
+        )
+        msg.attach(part)
+    # Encode message
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
+    # Send
+    service.users().messages().send(
+        userId="me",
+        body={"raw": raw}
+    ).execute()
 
 @app.route("/")
 def index():
