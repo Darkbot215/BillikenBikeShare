@@ -190,6 +190,7 @@ def checkOut():
         emailLegit = emailChecker(email)
         if emailLegit:
             print('this email is legit')
+            addUser(email)
             return jsonify({
         "topText": "Welcome First Time User!",
         "textbox": "For your first use, check your SLU email for a verification code<br> If it is not showing up let the groupme or sluonthemove@slu.edu know! <br><br> To enter the code click <a href=\"https://www.w3schools.com\">HERE</a>"
@@ -371,7 +372,7 @@ def verifyUser():
 
     if temp >= now:
         #We are within time.
-        if user_info[5] == verificationCode.strip():
+        if str(user_info[5]) == str(verificationCode.strip()):
         #Success. This account can be verified
             print(email_idx+2)
             sheet.values().clear(
