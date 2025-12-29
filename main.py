@@ -958,6 +958,7 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
     except Exception as e:
         print("Error in checkout_async:", e)
 
+
 def send_gmail(service,to,subject,html_contents,attachments=None):
     if attachments is None:
         attachments = []
