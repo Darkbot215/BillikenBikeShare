@@ -42,16 +42,20 @@ def get_credentials():
 
 creds = get_credentials()
 
+def get_sheets_service():
+    return build("sheets", "v4", credentials=creds["drive"])
+def get_drive_service():
+    return build("drive", "v3", credentials=creds["drive"])
+def get_gmail_service():
+    return build("gmail", "v1", credentials=creds["gmail"])
 # ------------------------------------
 # GOOGLE DRIVE CLIENT
 # ------------------------------------
-drive_service = build("drive", "v3", credentials=creds["drive"])
-sheets_service = build("sheets", "v4", credentials=creds["drive"])
-gmail_service = build("gmail","v1", credentials=creds["gmail"])
+
 SPREADSHEET_ID = "1o-r-D--evfEa3iHuViri5V3fb33a7iv_Op4IspKnO-0"
 
 
-spreadsheet = sheets_service.spreadsheets().get(
+spreadsheet = get_sheets_service().spreadsheets().get(
     spreadsheetId=SPREADSHEET_ID
 ).execute()
 bike_sheet_dict = {}
@@ -80,7 +84,7 @@ def now_local():
 def bike_table():
     RANGE_NAME = "Simple Bike Summary!A2:B"
 
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -108,7 +112,7 @@ def bike_status():
     bikeid = int(data.get("bikeid", ""))
     # Do something with the text:
     RANGE_NAME = "Simple Bike Summary!A2:B"
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -147,7 +151,7 @@ def bike_status():
         })
     else:
         RANGE_NAME = "Simple Bike Summary!D"+str(idx+2) #Plus 2 for the title row not read, and that excel starts at 1 not 0
-        sheet = sheets_service.spreadsheets()
+        sheet = get_sheets_service().spreadsheets()
         result = sheet.values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=RANGE_NAME
@@ -170,7 +174,7 @@ def checkOut():
     #Find if email is in list
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -220,7 +224,7 @@ def checkOut():
     #Congrats, they are good to check out a bike. Now we doublecheck the bike is good to check out and then send code
     RANGE_NAME = "Simple Bike Summary!A2:E"
 
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -240,7 +244,7 @@ def checkOut():
                     +str(values[bike_idx][2])+ "\n\n"
                     "Don't forget to check your bike back in within 24 hours by scanning the QR code! "
             )
-            send_gmail(gmail_service,email,"Billiken Bikeshare Unlock Code: " + str(values[bike_idx][2]),message_body)
+            send_gmail(get_gmail_service(),email,"Billiken Bikeshare Unlock Code: " + str(values[bike_idx][2]),message_body)
             return jsonify({
                 "topText": "The bike has been successfully checked-out",
                 "textbox": "Check your email for the bike unlock code <br><br> If you are having issues reach out to SLU on the Move"
@@ -270,7 +274,7 @@ def checkin():
     #Email sluonthemove about failed check-in
     RANGE_NAME = "Simple Bike Summary!A2:E"
 
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -290,7 +294,7 @@ def checkin():
     # Find if email is in list
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -339,7 +343,7 @@ def verifyUser():
     verificationCode = data.get("verificationCode","")
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -409,7 +413,7 @@ def verifyUser():
 
 def addUser(email):
     now = now_local()
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     epoch = date(1899, 12, 30)
     today = date.today()
     account_expiration = date(today.year + (today.month > 5), 5, 31)
@@ -475,7 +479,7 @@ def addUser(email):
             "https://your-site.com/verify?email=" + email + "&code=" + str(verification_code) + "\n\n"
                                                                                                 "Or enter your code and email on this webpage:https://your-site.com/verify "
     )
-    send_gmail(gmail_service,email,"Billiken Bikeshare Verification Code: " + str(verification_code),message_body)
+    send_gmail(get_gmail_service(),email,"Billiken Bikeshare Verification Code: " + str(verification_code),message_body)
 
 def emailChecker(email,on = True):
     period = False
@@ -548,7 +552,7 @@ def timeExtractor(time):
     return temp
 
 def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     #4 Updates to be done
     #Update userlog with times checked out and new hold on account
     #Update bike summary with checked-out
@@ -708,7 +712,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
     ).execute()
     
 def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_long_term = False):
-    sheet = sheets_service.spreadsheets()
+    sheet = get_sheets_service().spreadsheets()
     # 4 Updates to be done
     # Update userlog with times checked out and new hold on account
     # Update bike summary with checked-out
@@ -933,14 +937,14 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
         if photo_path != "":
             now = now_local()
             contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
-            send_gmail(gmail_service,"sluonthemove@slu.edu","Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
+            send_gmail(get_gmail_service(),"sluonthemove@slu.edu","Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
         if bciw:
-            send_gmail(gmail_service,email,"Forgotten Bike Return #"+str(bike),
+            send_gmail(get_gmail_service(),email,"Forgotten Bike Return #"+str(bike),
                        "Your previously checked-out bike has been checked in by another user. Next time please don't forget to check-in your bike upon return")
-            send_gmail(gmail_service,"erictrmans@gmail.com","Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
+            send_gmail(get_gmail_service(),"erictrmans@gmail.com","Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
-            send_gmail(gmail_service,email,"Bike #"+str(bike)+" Return Confirmation","Your bike has been successfully checked-in! Thank you for using the bikeshare!")
+            send_gmail(get_gmail_service(),email,"Bike #"+str(bike)+" Return Confirmation","Your bike has been successfully checked-in! Thank you for using the bikeshare!")
         driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
 
 
@@ -952,9 +956,9 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             #This means there is an issue to be reported and sent to email
             contents = "Reported issue is: \n" +str(issues)+"Bike #"+str(bike)+" was checked in at "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n"
             if photo_path != "":
-                send_gmail(gmail_service,"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
+                send_gmail(get_gmail_service(),"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
             else:
-                send_gmail(gmail_service,"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
+                send_gmail(get_gmail_service(),"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
 
@@ -998,6 +1002,8 @@ def send_gmail(service,to,subject,html_contents,attachments=None):
         userId="me",
         body={"raw": raw}
     ).execute()
+
+
 
 @app.route("/")
 def index():
