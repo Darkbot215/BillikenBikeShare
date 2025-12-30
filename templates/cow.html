@@ -245,13 +245,24 @@
     
 
     <script>
-        function fillDropdown(length, text = "None") {
+        function fillDropdown(listy, text = "") {
             const select = document.getElementById("mySelect");
-            const option = document.createElement("option");
+
             select.innerHTML = "";
-            option.value = -1;
-            option.textContent = text;
-            select.appendChild(option);
+            if (text){
+                option.value = -1;
+                option.textContent = text;
+                select.appendChild(option);
+            }
+
+            listy.forEach(b => {
+                const option = document.createElement("option");
+                option.value = b.id;
+                option.textContent = b.id;
+                select.appendChild(option);
+            })
+
+
 
 
             for (let i = 1; i <= length; i++) {
@@ -335,7 +346,7 @@
                         document.getElementById("textboxA").innerHTML = data.text1//`To check out the bike enter your SLU email in the textbox in the format:<br></br> john.smith@slu.edu`;
                         document.getElementById("input").style.display = "block";
                         document.getElementById("textboxB").innerText = `If checking out helmet enter helmet number`;
-                        fillDropdown(data.helmetMax);
+                        fillDropdown(data.helmetList,"None");
                         const dropdown = document.getElementById("mySelect");
 
                         dropdown.style.display = "block";
@@ -358,7 +369,7 @@
                         input.style.display = "block";
                         input.style.height = "30vh";
                         input.placeholder = "Describe any issues here (or leave blank if none)"
-                        fillDropdown(data.helmetMax, "Enter helmet # here (If used)");
+                        fillDropdown(data.helmetList, "Enter helmet # here (If used)");
                         const dropdown = document.getElementById("mySelect");
 
                         dropdown.style.display = "block";
