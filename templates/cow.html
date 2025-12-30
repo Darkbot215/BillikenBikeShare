@@ -461,6 +461,7 @@
                 fetchWithTimeout("/table").then(data =>{
                     // If there is no bike id then do this with data
                     overlay.style.display = "none";
+                    document.getElementById("toptext").innerText = data.topText;
 
                     document.getElementById("textboxA").innerText = `Status at: ${data.time}`;
                     const table = document.getElementById("bikeTable");
@@ -489,7 +490,7 @@
                         option.textContent = b.id;
                         select.appendChild(option);
                     })
-                    document.getElementById("textboxB").innerText = "To check out a bike select the ID and go to the page";
+                    document.getElementById("textboxB").innerHTML = data.textbox;
                     select.style.display = "block";
                     const button2 = document.getElementById("buttonB")
                     button2.innerText = "Go To Bike Page"

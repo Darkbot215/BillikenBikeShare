@@ -81,6 +81,34 @@ LOCAL_TZ = ZoneInfo("America/Chicago")
 def now_local():
     return datetime.now(LOCAL_TZ)
 
+
+
+siteResponse = {}
+def load_site_messages():
+    siteResponse.clear()
+    RANGE_NAME = "SiteResponseMessages!A1:E"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+
+    values = result.get("values", [])
+    currentDic = ""
+
+    for row in values:
+        if row and row[0]:
+            currentDic = row[0]
+            siteResponse.setdefault(currentDic, {})
+        if currentDic and len(row) > 1:
+            siteResponse[currentDic].setdefault(row[1], [])
+            for cell in row[2:]:
+                siteResponse[currentDic][row[1]].append(cell)
+
+load_site_messages()
+
+
 @app.route("/table", methods=["GET"])
 def bike_table():
     RANGE_NAME = "Simple Bike Summary!A2:B"
@@ -104,7 +132,9 @@ def bike_table():
         bikelist.append({"id": row[0], "status": row[1], "color": output_color})
     return jsonify({
         "time": current_time,
-        "bike_list": bikelist
+        "bike_list": bikelist,
+        "topText": siteResponse["InitialPage"]["Table"][0],
+        "textbox": siteResponse["InitialPage"]["Table"][1]
     })
 
 @app.route("/status", methods=["POST"])
@@ -132,22 +162,22 @@ def bike_status():
         #That bike does not exist
         return (jsonify({
             "status": 2,
-            "statusText": "Not Found",
-            "text": "This bike is not found in the Billiken Bikeshare system, if this is an error contact: <br> sluonthemove@slu.edu"
+            "statusText": siteResponse["InitialPage"]["NotFound"][0],
+            "text1": siteResponse["InitialPage"]["NotFound"][0]
         }))
 
 
     if values[idx][1] == "Checked-in":
         return jsonify({
             "status": 0,
-            "text1": bikeForCheckoutText,
+            "text1": siteResponse["InitialPage"]["Checked-in"][1],
             "helmetMax": helmetMax
         })
     elif values[idx][1] == "Checked-out":
         return jsonify({
             "status":1,
-            "text1": "To check the bike you must attach a photo using the file picker below <br><br> If there are any mechanical issues to report enter them in the box below <br><br> If you used a helmet make sure to enter the helmet number in the dropdown",
-            "text2": "If you have not checked out the bike but this bike is returned press below to report",
+            "text1": siteResponse["InitialPage"]["Checked-out"][1],
+            "text2": siteResponse["InitialPage"]["Checked-out"][2],
             "helmetMax": helmetMax
         })
     else:
@@ -161,9 +191,8 @@ def bike_status():
         return jsonify({
             "status": 2,
             "statusText":"Unavailable",
-            "text1": "This bike's status is currently listed as: "+values[idx][1]+"<br> Additional notes include:<br>"+note
+            "text1": "<p><b>This bike's status is currently listed as:</b> <br>"+values[idx][1]+"</p> <b>Additional notes include:</b><br>"+note
         })
-
 
 @app.route("/checkOut",methods=["POST"])
 def checkOut():
@@ -193,14 +222,14 @@ def checkOut():
             print('this email is legit')
             addUser(email)
             return jsonify({
-        "topText": "Welcome First Time User!",
-        "textbox": "For your first use, check your SLU email for a verification code<br> If it is not showing up let the groupme or sluonthemove@slu.edu know! <br><br> To enter the code click <a href=\"https://www.w3schools.com\">HERE</a>"
+        "topText": siteResponse["Check-out"]["FirstTime"][0],
+        "textbox": siteResponse["Check-out"]["FirstTime"][1]
     })
 
         else:
             return jsonify({
-                "topText": "New User Verification Fail",
-                "textbox": "The email you entered did not match the format: <b>john.smith@slu.edu</b> <br><br> For use with the bikeshare system it must be in that format <br>(NOT: jsmith01@slu.edu) <br><br> If you are having issues reach out to SLU on the Move <br><br> To retry simply reload the page"
+                "topText": siteResponse["Check-out"]["BadEmail"][0],
+                "textbox": siteResponse["Check-out"]["BadEmail"][1]
             })
     #Now we are dealing with people in the user list! that is fun.
     #Main checks Are they verified, do they have a free ride - > have they paid ->
@@ -208,8 +237,8 @@ def checkOut():
     verification_time = user_info[6] if len(user_info) > 6 else None
     if verification_time:
         return jsonify({
-            "topText": "This User Email is Not Verified",
-            "textbox": "Check your email for a verification code <br><br>  To verify click this link <a href=\"https://your-site.com/verify?email=" + email + "\">HERE</a><br><br> If you are having issues reach out to SLU on the Move"
+            "topText": siteResponse["Check-out"]["NotYetVerified"][0],
+            "textbox": siteResponse["Check-out"]["NotYetVerified"][1]
         })
     hold_status = user_info[4]
     if user_info[3] == "" and int(user_info[1]) >= 2:
@@ -248,16 +277,16 @@ def checkOut():
             )
             send_gmail(get_gmail_service(),email,"Billiken Bikeshare Unlock Code: " + str(values[bike_idx][2]),message_body)
             return jsonify({
-                "topText": "The bike has been successfully checked-out",
-                "textbox": "Check your email for the bike unlock code <br><br> If you are having issues reach out to SLU on the Move"
+                "topText": siteResponse["Check-out"]["Success"][0],
+                "textbox": siteResponse["Check-out"]["Success"][1]
             })
         return jsonify({
-                "topText": "This bike is no longer able to be checked out",
-                "textbox": "It has been already checked out by another user <br> If you need a bike try a different one <br><br> If you are having issues reach out to SLU on the Move"
-            })
+                "topText": siteResponse["Check-out"]["Fail"][0],
+                "textbox": siteResponse["Check-out"]["Fail"][1]
+        })
     return jsonify({
-        "topText": "This is an Error",
-        "textbox": "You should not be on this page. Error code 14 <br><br> Please reach out to SLU on the Move"
+        "topText": siteResponse["Check-out"]["Error14"][0],
+        "textbox": siteResponse["Check-out"]["Error14"][1]
     })
 
 @app.route("/checkIn",methods=["POST"])
@@ -287,8 +316,8 @@ def checkin():
         bike_idx = bike_list.index(bike)
     else:
         return jsonify({
-            "topText": "Bike failed to be checked in",
-            "textbox": "Please contact SLU on the Move about ERROR #11"
+            "topText": siteResponse["Check-in"]["Error11"][0],
+            "textbox": siteResponse["Check-in"]["Error11"][1]
         })
     email = values[bike_idx][-1]
 
@@ -309,8 +338,8 @@ def checkin():
         print('this user is on the list')
     else:
         return jsonify({
-            "topText": "Bike failed to be checked in",
-            "textbox": "Please contact SLU on the Move about ERROR #12"
+            "topText": siteResponse["Check-in"]["Error12"][0],
+            "textbox": siteResponse["Check-in"]["Error12"][1]
         })
         #Also a shitty error
     user_list = values
@@ -333,8 +362,8 @@ def checkin():
     ).start()
 
     return jsonify({
-        "topText": "Bike successfully checked in",
-        "textbox": "Thank you for using the Billiken Bikeshare by SLU on the Move!"
+        "topText": siteResponse["Check-in"]["Success"][0],
+        "textbox": siteResponse["Check-in"]["Success"][1]
     })
 
 @app.route("/submitVerify",methods=["POST"])
@@ -357,8 +386,8 @@ def verifyUser():
         email_idx = user_list.index(email)
     else:
         return jsonify({
-        "topText": "The email entered is not in the system for verification",
-        "textbox": "You may have made a typo. <br> If you continue to have this error contact SLU on the Move"
+        "topText": siteResponse["VerifyUser"]["NotInSystem"][0],
+        "textbox": siteResponse["VerifyUser"]["NotInSystem"][1]
     })
     user_info = values[email_idx]
     now = now_local()
@@ -366,8 +395,8 @@ def verifyUser():
         ver_time = user_info[6]
     except:
         return jsonify({
-        "topText": "The email entered has already been verified",
-        "textbox": "If you are having issue checking out a bike contact SLU on the Move"
+        "topText": siteResponse["VerifyUser"]["AlreadyDone"][0],
+        "textbox": siteResponse["VerifyUser"]["AlreadyDone"][1]
     })
     temp = timeExtractor(ver_time)
 
@@ -382,13 +411,13 @@ def verifyUser():
             ).execute()
 
             return jsonify({
-                "topText": "Your email was verified successfully!",
-                "textbox": "To check out a bike scan the code or follow this link to pick your bike! <br>Add a link pls"
+                "topText": siteResponse["VerifyUser"]["Success"][0],
+                "textbox": siteResponse["VerifyUser"]["Success"][1]
             })
         else:
             return jsonify({
-                "topText": "Failure to verify Email",
-                "textbox": "The code you entered does not match the email <br>If you are having issue checking out a bike contact SLU on the Move"
+                "topText": siteResponse["VerifyUser"]["Wrong"][0],
+                "textbox": siteResponse["VerifyUser"]["Wrong"][1]
             })
     else:
         requests = [{
@@ -407,11 +436,9 @@ def verifyUser():
         ).execute()
         addUser(email)
         return jsonify({
-            "topText": "Failure to verify email",
-            "textbox": "Your code expired after 30 minutes. We have sent your email a new code! Try again using that new code. <br> Please reach out to SLU on the Move if you are having issues"
+            "topText": siteResponse["VerifyUser"]["TooSlow"][0],
+            "textbox": siteResponse["VerifyUser"]["TooSlow"][1]
         })
-
-
 
 def addUser(email):
     now = now_local()
@@ -517,30 +544,30 @@ def holdChecker(hold_code, max_amount, tempBan = True):
             temp = timeExtractor(hold_time)
             if temp > now:
                 hold = tempBan
-                topText = "You are not able to check out more bikes"
-                textbox = "This is due to checking too many bikes too quickly <br> You must wait " + str(int((temp - now).seconds / 60) + 1) + " minutes to check out a new bike"
+                topText = siteResponse["Check-out"]["Fail"][0]
+                textbox = siteResponse["Check-out"]["Fail"][1]+" You must wait " + str(int((temp - now).seconds / 60) + 1) + " minutes to check out a new bike"
             # Could add an else here to delete it, but that is a later problem
         if "U" in code:
             position = code.index("U")
             amt_checked_out = int(code[position + 1], 16)
             if amt_checked_out >= max_amount:
                 hold = True
-                topText = "You are not able to check out more bikes"
-                textbox = "This is due to having the maximum number of bikes ("+str(max_amount)+") checked out <br> You currently have "+code[position + 1] +" bike checked out"
+                topText = siteResponse["Check-out"]["U-hold"][0]
+                textbox = siteResponse["Check-out"]["U-hold"][1]+" ("+str(max_amount)+") "+siteResponse["Check-out"]["U-hold"][2]+" You currently have "+code[position + 1] +" bike checked out"
         if "P" in code:
             hold = True
-            topText = "You are not able to check a bike"
-            textbox = "This is because to check out more bikes you need to pay club dues <br> Contact SLU on the Move through the GroupMe or sluonthemove@slu.edu for more information on how to pay"
+            topText = siteResponse["Check-out"]["P-hold"][0]
+            textbox = siteResponse["Check-out"]["P-hold"][1]
         if "L" in code:
             hold = True
-            topText = "You are not able to check a bike due to a hold on your account"
-            textbox = "You should have received an email about why and how to fix it <br> If you have questions contact SLU on the Move through the GroupMe or sluonthemove@slu.edu for more information"
+            topText = siteResponse["Check-out"]["L-hold"][0]
+            textbox = siteResponse["Check-out"]["L-hold"][1]
 
 
     else: #This is if they have a manually added hold on the account
         hold = True
-        topText = "You are not able to check a bike due to a hold on your account"
-        textbox = "This hold has been manually added by the SLU on the Move team <br> If you have questions contact SLU on the Move through the GroupMe or sluonthemove@slu.edu for more information"
+        topText = siteResponse["Check-out"]["Other-hold"][0]
+        textbox = siteResponse["Check-out"]["Other-hold"][1]
 
 
     return hold, [topText, textbox]
@@ -940,8 +967,8 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx):
     try:
+        now = now_local()
         if photo_path != "":
-            now = now_local()
             contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
             send_gmail(get_gmail_service(),"sluonthemove@slu.edu","Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
@@ -967,7 +994,6 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
                 send_gmail(get_gmail_service(),"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
-
 
 def send_gmail(service,to,subject,html_contents,attachments=None):
     if attachments is None:
@@ -1013,8 +1039,6 @@ def send_gmail(service,to,subject,html_contents,attachments=None):
 @app.route("/")
 def index():
     return render_template("cow.html")
-
-
 
 if __name__ == "__main__":
     app.run(host = "0.0.0.0", port=5000,debug=True)
