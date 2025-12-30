@@ -104,7 +104,7 @@ def load_settings():
                 siteResponse[currentDic][row[1]].append(cell)
     #This is for the OS settings page, this is a bit less automatic and more manual
     osSettings.clear()
-    RANGE_NAME = "SiteResponseMessages!A1:"
+    RANGE_NAME = "osSettings"
 
     sheet = get_sheets_service().spreadsheets()
     result = sheet.values().get(
