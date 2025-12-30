@@ -250,15 +250,17 @@
 
             select.innerHTML = "";
             if (text){
+                const option = document.createElement("option");
+
                 option.value = -1;
                 option.textContent = text;
                 select.appendChild(option);
             }
 
-            listy.forEach(b => {
+            listy.forEach(item => {
                 const option = document.createElement("option");
-                option.value = b.id;
-                option.textContent = b.id;
+                option.value = item;
+                option.textContent = item;
                 select.appendChild(option);
             })
 

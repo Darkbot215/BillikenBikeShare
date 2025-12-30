@@ -114,6 +114,10 @@ def load_settings():
 
     values = result.get("values", "")
     osSettings["helmets"] = values[0][1:]
+    osSettings["helmets"] = [int(x) for x in osSettings["helmets"]]
+
+    print("helmets")
+    print(osSettings["helmets"])
     osSettings["adminEmails"] = values[1][1:]
     osSettings["tempTimeout"] = int(values[2][1])
     osSettings["TempBan"] = int(values[3][1]) == 1
