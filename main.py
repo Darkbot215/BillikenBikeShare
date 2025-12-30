@@ -80,7 +80,8 @@ def now_local():
 
 
 siteResponse = {}
-def load_site_messages():
+osSettings = {}
+def load_settings():
     siteResponse.clear()
     RANGE_NAME = "SiteResponseMessages!A1:E"
 
@@ -101,8 +102,28 @@ def load_site_messages():
             siteResponse[currentDic].setdefault(row[1], [])
             for cell in row[2:]:
                 siteResponse[currentDic][row[1]].append(cell)
+    #This is for the OS settings page, this is a bit less automatic and more manual
+    osSettings.clear()
+    RANGE_NAME = "SiteResponseMessages!A1:"
 
-load_site_messages()
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+
+    values = result.get("values", "")
+    osSettings["helmets"] = values[0][1:]
+    osSettings["adminEmails"] = values[1][1:]
+    osSettings["tempTimeout"] = int(values[2][1])
+    osSettings["TempBan"] = int(values[3][1]) == 1
+    osSettings["EmailChecking"] = int(values[4][1]) == 1
+    osSettings["MaxBikes"] = int(values[5][1]) == 1
+    osSettings["PageUrl"] = values[6][1]
+
+
+
+load_settings()
 
 
 @app.route("/table", methods=["GET"])
@@ -167,14 +188,14 @@ def bike_status():
         return jsonify({
             "status": 0,
             "text1": siteResponse["InitialPage"]["Checked-in"][1],
-            "helmetMax": helmetMax
+            "helmetList": osSettings["helmets"]
         })
     elif values[idx][1] == "Checked-out":
         return jsonify({
             "status":1,
             "text1": siteResponse["InitialPage"]["Checked-out"][1],
             "text2": siteResponse["InitialPage"]["Checked-out"][2],
-            "helmetMax": helmetMax
+            "helmetList": osSettings["helmets"]
         })
     else:
         RANGE_NAME = "Simple Bike Summary!D"+str(idx+2) #Plus 2 for the title row not read, and that excel starts at 1 not 0
