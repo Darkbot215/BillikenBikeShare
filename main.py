@@ -70,11 +70,7 @@ app = Flask(__name__)
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
 helmetMax = 10
-bikeForCheckoutText = "To check out the bike enter your SLU email in the textbox in the format:<br> <b>john.smith@slu.edu</b>"
 
-# Populate Bike page (send bikeid)
-# Checkout bike = {emailCheckOut: email,bikeCheckOut: bike,helmetCheckOut:helmet}
-# Check in bike = {bikeCheckIn:bike, helmetCheckIn:helmet, mechanicalCheckIn:mechanicalIssues, BikeCheckedInWrong: bciw }
 
 LOCAL_TZ = ZoneInfo("America/Chicago")
 
@@ -1000,7 +996,8 @@ def send_gmail(service,to,subject,html_contents,attachments=None):
         attachments = []
     elif isinstance(attachments, str):
         attachments = [attachments]
-
+    if isinstance(to, (list, tuple, set)):
+        to = ", ".join(to)
     # Root message
     msg = MIMEMultipart()
     msg["To"] = to
