@@ -69,7 +69,6 @@ for sheet in spreadsheet["sheets"]:
 app = Flask(__name__)
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
-helmetMax = 10
 
 
 LOCAL_TZ = ZoneInfo("America/Chicago")
@@ -487,10 +486,8 @@ def verifyUser():
 def addUser(email):
     now = now_local()
     sheet = get_sheets_service().spreadsheets()
-    epoch = date(1899, 12, 30)
     today = date.today()
     account_expiration = date(today.year + (today.month > 5), 5, 31)
-    serial_date = (account_expiration - epoch).days
     code_expiration = now + timedelta(minutes=30)
     verification_code = randint(100000, 999999)
     requests = [
@@ -519,18 +516,7 @@ def addUser(email):
                         "values": [
                             {"userEnteredValue": {"stringValue": email}},
                             {"userEnteredValue": {"numberValue": 0}},
-                            {
-                                "userEnteredValue": {
-                                    "numberValue": serial_date
-
-                                },
-                                "userEnteredFormat": {
-                                    "numberFormat": {
-                                        "type": "DATE",
-                                        "pattern": "MM/dd/YYYY"
-                                    }
-                                }
-                            },
+                            {"userEnteredValue": {"stringValue": account_expiration.strftime("%m/%d/%Y") }},
                             {},{},  # intentionally empty
                             {"userEnteredValue": {"numberValue": verification_code}},
                             {"userEnteredValue": {"stringValue": code_expiration.strftime("%m/%d/%Y %H:%M:%S")}}
@@ -698,11 +684,12 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
                     "startRowIndex": bike_idx + 1,
                     "endRowIndex": bike_idx + 2,
                     "startColumnIndex": 4,
-                    "endColumnIndex": 5  # last-user column only
+                    "endColumnIndex": 6  # last-user column and timestamp
                 },
                 "rows": [{
                     "values": [
-                        {"userEnteredValue": {"stringValue": user_info[0]}}
+                        {"userEnteredValue": {"stringValue": user_info[0]}},
+                        {"userEnteredValue": {"stringValue": now.strftime("%m/%d/%Y %H:%M:%S")}}
                     ]
                 }],
                 "fields": "userEnteredValue"
@@ -844,10 +831,11 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
                     "startRowIndex": bike_idx + 1,
                     "endRowIndex": bike_idx + 2,
                     "startColumnIndex": 4,
-                    "endColumnIndex": 5  # last-user column only
+                    "endColumnIndex": 6  # last-user column and timestamp
                 },
                 "rows": [{
                     "values": [
+                        {"userEnteredValue": {"stringValue": ""}},
                         {"userEnteredValue": {"stringValue": ""}}
                     ]
                 }],
