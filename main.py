@@ -291,13 +291,11 @@ def checkOut():
         bike_idx = bike_list.index(bike)
         if values[bike_idx][1] == "Checked-in": #shit, we made it, we can check out
             driveCheckout(user_info,email_idx,bike,bike_idx,helmet)
-            message_body = (
-                    "Thank you for using Billiken Bikeshare Program run by SLU on the Move!\n\n"
-                    "Here is your unlock code for the bike:\n"
-                    +str(values[bike_idx][2])+ "\n\n"
-                    "Don't forget to check your bike back in within 24 hours by scanning the QR code! "
+            message_body = (siteResponse["Emails"]["Unlocking"][1]
+                    +str(values[bike_idx][2])+
+                    siteResponse["Emails"]["Unlocking"][2]
             )
-            send_gmail(get_gmail_service(),email,"Billiken Bikeshare Unlock Code: " + str(values[bike_idx][2]),message_body)
+            send_gmail(get_gmail_service(),email,siteResponse["Emails"]["Unlocking"][0] + str(values[bike_idx][2]),message_body)
             return jsonify({
                 "topText": siteResponse["Check-out"]["Success"][0],
                 "textbox": siteResponse["Check-out"]["Success"][1]
