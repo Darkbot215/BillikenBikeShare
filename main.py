@@ -122,13 +122,13 @@ def load_settings():
     osSettings["tempTimeout"] = int(values[2][1])
     osSettings["TempBan"] = int(values[3][1]) == 1
     osSettings["EmailChecking"] = int(values[4][1]) == 1
-    osSettings["MaxBikes"] = int(values[5][1]) == 1
+    osSettings["MaxBikes"] = int(values[5][1])
     osSettings["PageUrl"] = values[6][1]
 
 
 
 load_settings()
-
+print(osSettings)
 
 @app.route("/table", methods=["GET"])
 def bike_table():
@@ -266,7 +266,7 @@ def checkOut():
         pass
         hold_status = holdUpdate(hold_status, holdToAdd = "P")
         #This is a scuffed dues based hold. A permanent one should be added
-    hold, output = holdChecker(hold_status,1) #EDIT MAX AMOUNT OF BIKES CHECKED OUT
+    hold, output = holdChecker(hold_status) #EDIT MAX AMOUNT OF BIKES CHECKED OUT
     if hold:
         return jsonify({
             "topText": output[0],
@@ -387,12 +387,14 @@ def checkin():
         "textbox": siteResponse["Check-in"]["Success"][1]
     })
 
+
 @app.route("/submitVerify",methods=["POST"])
 def verifyUser():
     data = request.get_json()
     email = data.get("email", "")
     email = email.strip().lower()
     verificationCode = data.get("verificationCode","")
+    newCode = data.get("newCode",[])
     RANGE_NAME = "UserLog!A2:G"
 
     sheet = get_sheets_service().spreadsheets()
@@ -419,6 +421,28 @@ def verifyUser():
         "topText": siteResponse["VerifyUser"]["AlreadyDone"][0],
         "textbox": siteResponse["VerifyUser"]["AlreadyDone"][1]
     })
+    print(newCode)
+    if newCode:
+        requests = [{
+            "deleteDimension": {
+                "range": {
+                    "sheetId": bike_sheet_dict["UserLog"],
+                    "dimension": "ROWS",
+                    "startIndex": email_idx + 1,
+                    "endIndex": email_idx + 2
+                },
+            }
+        }]
+        sheet.batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={'requests': [requests]}
+        ).execute()
+        addUser(email)
+        return jsonify({
+            "topText": siteResponse["VerifyUser"]["NewCode"][0],
+            "textbox": siteResponse["VerifyUser"]["NewCode"][1]
+        })
+
     temp = timeExtractor(ver_time)
 
     if temp >= now:
@@ -531,7 +555,7 @@ def addUser(email):
     )
     send_gmail(get_gmail_service(),email,"Billiken Bikeshare Verification Code: " + str(verification_code),message_body)
 
-def emailChecker(email,on = True):
+def emailChecker(email,on = osSettings["EmailChecking"]):
     period = False
     emailLegit = False
     try:
@@ -550,7 +574,7 @@ def emailChecker(email,on = True):
             break
     return emailLegit or not on
 
-def holdChecker(hold_code, max_amount, tempBan = True):
+def holdChecker(hold_code, max_amount = osSettings["MaxBikes"], tempBan = osSettings["TempBan"]):
     hold = False
     topText = ""
     textbox = ""
@@ -912,7 +936,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         body={'requests': [requests]}
     ).execute()
 
-def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30):
+def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = osSettings["tempTimeout"]):
     codeDict = {}
     #Unpack the current dictionary
     if currentHold != "":
@@ -991,12 +1015,12 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
         now = now_local()
         if photo_path != "":
             contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
-            send_gmail(get_gmail_service(),"sluonthemove@slu.edu","Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
+            send_gmail(get_gmail_service(),osSettings["adminEmails"],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
         if bciw:
             send_gmail(get_gmail_service(),email,"Forgotten Bike Return #"+str(bike),
                        "Your previously checked-out bike has been checked in by another user. Next time please don't forget to check-in your bike upon return")
-            send_gmail(get_gmail_service(),"erictrmans@gmail.com","Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
+            send_gmail(get_gmail_service(),osSettings["adminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
             send_gmail(get_gmail_service(),email,"Bike #"+str(bike)+" Return Confirmation","Your bike has been successfully checked-in! Thank you for using the bikeshare!")
         driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
@@ -1010,9 +1034,9 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             #This means there is an issue to be reported and sent to email
             contents = "Reported issue is: \n" +str(issues)+"Bike #"+str(bike)+" was checked in at "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n"
             if photo_path != "":
-                send_gmail(get_gmail_service(),"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
+                send_gmail(get_gmail_service(),osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
             else:
-                send_gmail(get_gmail_service(),"erictrmans@gmail.com","Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
+                send_gmail(get_gmail_service(),osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
 

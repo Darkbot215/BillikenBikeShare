@@ -307,11 +307,15 @@
             const verificationCode = urlParams.get("code");   // "1" through "10"
             const email = urlParams.get("email") ? decodeURIComponent(urlParams.get("email")) : "";
             const vp = urlParams.get("vp");
+            const nc = urlParams.get("nc");
 
             const overlay = document.getElementById("overlaySpinner");
             overlay.style.display = "flex";
             if(vp || email || verificationCode){
                 verificationPage(email,verificationCode) //THIS IS WHERE YOU ARE WORKING
+            }
+            else if (nc){
+                newCodePage()
             }
             else if(bike) {
                 bikeSpecificPage(bike)
@@ -321,6 +325,22 @@
             }
         }
 
+        function newCodePage()
+        {
+            const overlay = document.getElementById("overlaySpinner");
+
+            overlay.style.display = "none";
+
+            
+            document.getElementById("toptext").innerText = `New Verification Code Page`;
+            document.getElementById("textboxA").innerText = "Enter SLU Email below to get a new verification code sent to your email:";
+            document.getElementById("input").style.display = "block";
+
+            document.getElementById("buttonB").style.display = "block";
+            document.getElementById("buttonB").onclick = () => submitVerify(1);
+
+            
+        }
 
         function bikeSpecificPage(bike)
         {
@@ -430,14 +450,14 @@
             }
         }
 
-        function submitVerify()
+        function submitVerify(newCode = 0)
         {
             const email = document.getElementById("input").value;
             const verificationCode = document.getElementById("inputB").value;
 
             const overlay = document.getElementById("overlaySpinner");
             overlay.style.display = "flex";
-
+            if (newCode != 1) {
             fetchWithTimeout("/submitVerify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -459,6 +479,64 @@
             }).catch(err => {
                 overlay.style.display = "none";
                 document.getElementById("textboxA").innerText = `ERROR with verification: ${err.message}`;
+                console.error(err);
+            });
+            }
+            else {
+                fetchWithTimeout("/submitVerify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, verificationCode, newCode })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+                document.getElementById("input").style.display = "none";
+                document.getElementById("textboxB").innerText = "";
+                document.getElementById("inputB").style.display = "none";
+                document.getElementById("buttonB").style.display = "none";
+                document.getElementById("input").value = "";
+                document.getElementById("inputB").value = "";
+
+
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with getting a new code: ${err.message}`;
+                console.error(err);
+            });
+            }
+        }
+
+        function newCode()
+        {
+            const email = document.getElementById("input").value;
+
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+            fetchWithTimeout("/newCode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+                document.getElementById("input").style.display = "none";
+                document.getElementById("textboxB").innerText = "";
+                document.getElementById("inputB").style.display = "none";
+                document.getElementById("buttonB").style.display = "none";
+                document.getElementById("input").value = "";
+                document.getElementById("inputB").value = "";
+
+
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with getting new code: ${err.message}`;
                 console.error(err);
             });
         }
