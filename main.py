@@ -124,6 +124,7 @@ def load_settings():
     osSettings["EmailChecking"] = int(values[4][1]) == 1
     osSettings["MaxBikes"] = int(values[5][1])
     osSettings["PageUrl"] = values[6][1]
+    osSettings["blankResponses"] = values[7][1:]
 
 
 
@@ -547,13 +548,11 @@ def addUser(email):
         body={'requests': [requests]}
     ).execute()
 
-    message_body = (
-            "Welcome to the Billiken Bikeshare Program run by SLU on the Move!\n\n"
-            "To verify your email for bikeshare use click the link below\n"
-            "https://your-site.com/verify?email=" + email + "&code=" + str(verification_code) + "\n\n"
-                                                                                                "Or enter your code and email on this webpage:https://your-site.com/verify "
+    message_body = ( siteResponse["Emails"]["Verification"][1]+
+            "<a href=" + osSettings["PageUrl"]+"/?email=" + email + "&code=" + str(verification_code) + ">Verify by clicking here </a>"
+                     + siteResponse["Emails"]["Verification"][2]+ "<a href="+osSettings["PageUrl"]+"/?vp=1>"+osSettings["PageUrl"]+"/?vp=1 </a>"
     )
-    send_gmail(get_gmail_service(),email,"Billiken Bikeshare Verification Code: " + str(verification_code),message_body)
+    send_gmail(get_gmail_service(),email, siteResponse["Emails"]["Verification"][0] + str(verification_code),message_body)
 
 def emailChecker(email,on = osSettings["EmailChecking"]):
     period = False
@@ -1014,25 +1013,26 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
     try:
         now = now_local()
         if photo_path != "":
-            contents = "Bike #"+str(bike)+" is checked in as of "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n Photo included:"
-            send_gmail(get_gmail_service(),osSettings["adminEmails"],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
+            contents = "<p> Bike #"+str(bike)+" is checked in as of: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p><p> Last user was: <br>"+email+"</p> Photo included:"
+            send_gmail(get_gmail_service(),osSettings["adminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
         if bciw:
-            send_gmail(get_gmail_service(),email,"Forgotten Bike Return #"+str(bike),
-                       "Your previously checked-out bike has been checked in by another user. Next time please don't forget to check-in your bike upon return")
+            send_gmail(get_gmail_service(),email,siteResponse["Emails"]["ForgottenReturn"][0]+str(bike),
+                       siteResponse["Emails"]["ForgottenReturn"][1])
             send_gmail(get_gmail_service(),osSettings["adminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
-            send_gmail(get_gmail_service(),email,"Bike #"+str(bike)+" Return Confirmation","Your bike has been successfully checked-in! Thank you for using the bikeshare!")
+            send_gmail(get_gmail_service(),email,"Bike #"+str(bike)+siteResponse["Emails"]["Return"][0],siteResponse["Emails"]["Return"][1])
         driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
 
-
-        blank_issue_responses = {"", "none", "na", "n/a", "no", "nope", "nil", "ok", "okay", "fine", "good", "all good",
-                                 "no issue", "no issues", "no problem", "no problems", "nothing", "nothing to report",
-                                 "no issues noted", "everything is fine", }
+        blank_issue_responses = {
+                                    s.strip().lower()
+                                    for s in osSettings["blankResponses"]
+                                    if s is not None
+                                } | {""}
 
         if issues.strip().lower() not in blank_issue_responses:
             #This means there is an issue to be reported and sent to email
-            contents = "Reported issue is: \n" +str(issues)+"Bike #"+str(bike)+" was checked in at "+now.strftime("%m/%d/%Y %H:%M:%S") +".\n Last user was "+email+"\n"
+            contents = "<p> Reported issue is: <br>" +str(issues)+"<p> Bike #"+str(bike)+" was checked in at: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p> <p>Last user was: <br>"+email+"</p>"
             if photo_path != "":
                 send_gmail(get_gmail_service(),osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
             else:
