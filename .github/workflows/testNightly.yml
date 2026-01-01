@@ -33,4 +33,4 @@ jobs:
           EMAIL_CLIENT_ID: ${{ secrets.EMAIL_CLIENT_ID }}
           EMAIL_CLIENT_SECRET: ${{ secrets.EMAIL_CLIENT_SECRET }}
         run: |
-          python your_script_filename.py
+          python UserPageUpdate.py
