@@ -1074,5 +1074,9 @@ def send_gmail(service,to,subject,html_contents,attachments=None):
 def index():
     return render_template("cow.html")
 
+@app.route("/health", methods=["GET"])
+def health():
+    return "ok", 200
+
 if __name__ == "__main__":
     app.run(host = "0.0.0.0", port=5000,debug=True)

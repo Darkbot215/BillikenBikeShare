@@ -1,0 +1,35 @@
+name: Hourly Job
+
+on:
+  schedule:
+    - cron: "19 * * * *"
+
+  # Allows manual runs from the GitHub UI
+  workflow_dispatch:
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run job
+        env:
+          GOOGLE_CREDS_BASE64: ${{ secrets.GOOGLE_CREDS_BASE64 }}
+          EMAIL_REFRESH_TOKEN: ${{ secrets.EMAIL_REFRESH_TOKEN }}
+          EMAIL_CLIENT_ID: ${{ secrets.EMAIL_CLIENT_ID }}
+          EMAIL_CLIENT_SECRET: ${{ secrets.EMAIL_CLIENT_SECRET }}
+        run: |
+          python overDueBikeCheck.py
