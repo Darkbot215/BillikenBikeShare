@@ -119,11 +119,12 @@ def load_settings():
     print(osSettings["helmets"])
     osSettings["adminEmails"] = values[1][1:]
     osSettings["tempTimeout"] = int(values[2][1])
-    osSettings["TempBan"] = int(values[3][1]) == 1
-    osSettings["EmailChecking"] = int(values[4][1]) == 1
-    osSettings["MaxBikes"] = int(values[5][1])
-    osSettings["PageUrl"] = values[6][1]
-    osSettings["blankResponses"] = values[7][1:]
+    osSettings["checkOutLength"] = int(values[3][1])
+    osSettings["TempBan"] = int(values[4][1]) == 1
+    osSettings["EmailChecking"] = int(values[5][1]) == 1
+    osSettings["MaxBikes"] = int(values[6][1])
+    osSettings["PageUrl"] = values[7][1]
+    osSettings["blankResponses"] = values[8][1:]
 
 
 
@@ -831,10 +832,11 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
                     "startRowIndex": bike_idx + 1,
                     "endRowIndex": bike_idx + 2,
                     "startColumnIndex": 4,
-                    "endColumnIndex": 6  # last-user column and timestamp
+                    "endColumnIndex": 7  # last-user column and timestamp
                 },
                 "rows": [{
                     "values": [
+                        {"userEnteredValue": {"stringValue": ""}},
                         {"userEnteredValue": {"stringValue": ""}},
                         {"userEnteredValue": {"stringValue": ""}}
                     ]

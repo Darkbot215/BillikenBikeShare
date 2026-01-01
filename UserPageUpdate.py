@@ -51,6 +51,8 @@ creds = get_credentials()
 
 def get_sheets_service():
     return build("sheets", "v4", credentials=creds["drive"])
+def get_gmail_service():
+    return build("gmail", "v1", credentials=creds["gmail"])
 
 LOCAL_TZ = ZoneInfo("America/Chicago")
 
