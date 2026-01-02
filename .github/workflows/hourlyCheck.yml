@@ -2,7 +2,7 @@ name: Hourly Job
 
 on:
   schedule:
-    - cron: "49 * * * *"
+    - cron: "36 * * * *"
 
   # Allows manual runs from the GitHub UI
   workflow_dispatch:
