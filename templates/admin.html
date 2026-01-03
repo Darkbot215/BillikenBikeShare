@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- critical -->
+    <title>Billiken Bikeshare</title>
+    <link rel="icon" href="/static/images/BBicon.ico">
+    <link rel="shortcut icon" href="/static/images/BBicon.ico">
+
+
+    <style>
+        :root {
+            --font-size-1: clamp(28px, 7vw, 55px);
+            --font-size-2: clamp(16px, 5vw, 32px);
+        }
+        body {
+            font-family: Arial, sans-serif;
+            padding: 5vw;
+            font-size: var(--font-size-2); /* scales with screen width */
+            background-color: #e7f1fa; /* light blue accent */
+
+        }
+        #textboxA, #textboxB {
+            margin-top: 3vw;   /* space above the box */
+            margin-bottom: 3vw; /* space below the box */
+        }
+
+
+        h3 {
+            font-size: var(--font-size-1); /* scale heading size */
+        }
+        h4 {
+            font-size: var(--font-size-2);
+
+        }
+
+        textarea {
+            width: 100%;
+            height: 10vh;        /* fills large portion of screen vertically */
+            font-size: var(--font-size-2);       /* scale text size */
+            padding: 2vw;
+            box-sizing: border-box;
+            border-radius: 2vw;
+            border: 1px solid #999;
+            resize: vertical;         /* prevents weird resizing on mobile */
+        }
+
+        button {
+            margin-top: 4vw;
+            padding: 3vw 5vw;
+            font-size: var(--font-size-2);
+            border-radius: 2vw;
+            border: none;
+            background: #4a90e2;
+            color: white;
+            width: 100%;          /* full-width button */
+        }
+        .dropdown {
+            width: 100%;
+            padding: 2vw;
+            font-size: var(--font-size-2);
+            border-radius: 2vw;
+            border: 1px solid #999;
+            margin-top: 3vw;
+            background-color: white; /* optional */
+        }
+
+        #response {
+            margin-top: 4vw;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: var(--font-size-2);      /* scales with screen width on mobile */
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        .file-input {
+            width: 100%;
+            font-size: var(--font-size-2);          /* scales with screen width */
+            /*margin-top: 2vw;*/
+        }
+
+        /* Optional: slightly nicer on modern browsers */
+        .file-input::file-selector-button {
+            font-size: var(--font-size-2);
+            padding: 2vw 4vw;
+            border-radius: 2vw;
+            border: none;
+            background-color: #4a90e2;
+            color: white;
+        }
+
+        /* Fallback for older mobile browsers */
+        .file-input::-webkit-file-upload-button {
+            font-size: var(--font-size-2);
+            padding: 2vw 4vw;
+        }
+        .form-control {
+            width: 100%;
+            margin-top: 4vw;   /* THIS is the spacing */
+        }
+        #overlaySpinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7); /* semi-transparent overlay */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* make sure it’s above everything */
+        }
+
+        .spinner {
+            border: 0.6vw solid #f3f3f3;
+            border-top: 0.6vw solid #4a90e2;
+            border-radius: 50%;
+            width: 10vw;
+            height: 10vw;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .page {
+            max-width: 900px;     /* desktop-friendly width */
+            margin: 0 auto;       /* center on desktop */
+        }
+        @media (min-width: 768px) {
+            body {
+                background-color: #a0c4e3; /* darker outside */
+                display: flex;
+                justify-content: center;   /* horizontal center */
+                align-items: flex-start;   /* vertical start, so content starts at top */
+                min-height: 100vh;         /* full height */
+                /*padding: 4vw 0;    */        /* vertical spacing from edges */
+            }
+
+            .page {
+                max-width: 900px;
+                width: 100%;
+                background-color: #e7f1fa; /* light blue inside */
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                padding: 24px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                margin: 0; /* handled by flex centering */
+            }
+            body {
+                padding: 24px;
+            }
+
+            #textboxA,
+            #textboxB {
+                margin-top: 16px;
+                margin-bottom: 16px;
+            }
+
+            .form-control {
+                margin-top: 16px;
+            }
+
+            button {
+                width: 100%;            /* stop full-width stretching */
+                display: block;         /* allows centering */
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: 16px;       /* reduce spacing above buttons */
+                padding: 12px 24px;     /* smaller padding than mobile */
+            }
+
+            textarea,
+            .dropdown,
+            .file-input {
+                padding: 12px;
+                border-radius: 10px;
+            }
+
+            h3 {
+                margin-bottom: 12px;
+            }
+             .file-input {
+                width: 100%;            /* smaller width on desktop */
+                margin-left: auto;
+                margin-right: auto;    /* center */
+                padding: 8px 16px;     /* shrink padding */
+                margin-top: 16px;      /* reduce spacing */
+            }
+
+            .file-input::file-selector-button,
+            .file-input::-webkit-file-upload-button {
+                padding: 8px 16px;     /* smaller button inside input */
+            }
+
+        }
+    </style>
+</head>
+
+<body>
+    <div class = "page">
+    <h3 id = "toptext">Loading</h3>
+    <!--<h4 id = "textboxA"></h4>-->
+    <div id = "textboxA"></div>
+    <table id = "bikeTable">    </table>
+    <input
+        type="file"
+        id="photoInput"
+        name="image"
+        accept="image/*"
+        class="file-input"
+        style = "display:none"
+    />
+
+    <textarea id="input" class="form-control" style="display: none;"></textarea>
+    <button id = "buttonA" style="display: none;">Submit</button>
+
+
+    <div id = "textboxB"></div>
+
+
+    <!--<h4 id = "textboxB"></h4>-->
+    <textarea id="inputB" style="display: none;"></textarea>
+
+
+    
+    <select id="mySelect" class="dropdown" style="display: none;">
+        <option value="None">None</option>
+    </select>
+    <button id = "buttonB" style="display: none;">Submit</button> 
+
+    <table id = "bikeTable2">    </table>
+
+    <div id="overlaySpinner" style="display:none;">
+        <div class="spinner"></div>
+    </div>
+
+ 
+
+
+
+    
+
+    <script>
+        function fillDropdown(listy, text = "") {
+            const select = document.getElementById("mySelect");
+
+            select.innerHTML = "";
+            if (text){
+                const option = document.createElement("option");
+
+                option.value = -1;
+                option.textContent = text;
+                select.appendChild(option);
+            }
+
+            listy.forEach(item => {
+                const option = document.createElement("option");
+                option.value = item;
+                option.textContent = item;
+                select.appendChild(option);
+            })
+            for (let i = 1; i <= length; i++) {
+                const option = document.createElement("option");
+                option.value = i;
+                option.textContent = i;
+                select.appendChild(option);
+            }
+        }
+        function hideAllPageElements(clearContent = true) {
+            // List of all elements you want to hide
+            const elementsToHide = [
+                "toptext",
+                "textboxA",
+                "textboxB",
+                "bikeTable",
+                "bikeTable2",
+                "photoInput",
+                "input",
+                "inputB",
+                "mySelect",
+                "buttonA",
+                "buttonB",
+                "overlaySpinner"
+            ];
+
+            elementsToHide.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.style.display = "none";
+                    if (clearContent) {
+                        if (el.tagName === "TABLE") {
+                            el.innerHTML = "";
+                        } else if ("value" in el) {
+                            el.value = "";
+                        } else {
+                            el.innerHTML = "";
+                        }
+                    }
+                }
+            });
+        }
+
+        function buildTable({
+            tableId,
+            headingText = "",
+            headers = [],
+            rows = [],
+            defaultCellColor = "#FFFFFF"
+        }) {
+            // Set heading (optional)
+            if (headingText) {
+                document.getElementById("textboxA").innerText = headingText;
+            }
+
+            const table = document.getElementById(tableId);
+            table.innerHTML = "";
+
+            // Build header
+            if (headers.length > 0) {
+                const thead = document.createElement("thead");
+                const tr = document.createElement("tr");
+
+                headers.forEach(h => {
+                    const th = document.createElement("th");
+                    th.textContent = h;
+                    tr.appendChild(th);
+                });
+
+                thead.appendChild(tr);
+                table.appendChild(thead);
+            }
+
+            // Build body
+            const tbody = document.createElement("tbody");
+
+            rows.forEach(rowData => {
+                const tr = document.createElement("tr");
+
+                rowData.forEach(cell => {
+                    const td = document.createElement("td");
+                    td.textContent = cell.value;
+                    td.style.backgroundColor = cell.color || defaultCellColor;
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            table.appendChild(tbody);
+        }
+
+        function fetchWithTimeout(url, options = {}, timeout = 10000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+
+            return fetch(url, {
+                ...options,
+                signal: controller.signal
+            })
+            .then(async res => {
+                clearTimeout(id);
+
+                let data;
+                try {
+                    data = await res.json();
+                } catch {
+                    data = null;
+                }
+
+                if (!res.ok) {
+                    // 🔑 THIS preserves your Flask error message
+                    const msg = data?.error || `Server responded with ${res.status}`;
+                    throw new Error(msg);
+                }
+
+                return data;
+            })
+            .catch(err => {
+                clearTimeout(id);
+                if (err.name === "AbortError") {
+                    throw new Error("Request timed out");
+                }
+                throw err;
+            });
+        }
+
+
+        /* This function loads the page with data */
+        function populatePage()
+        {
+
+            const urlParams = new URLSearchParams(window.location.search);
+            //The url having ?bike=# tells which bike it is for
+            const loginCode = Number(urlParams.get("AdminPass"));   // "1" through "10"
+
+
+            //const overlay = document.getElementById("overlaySpinner");
+           // overlay.style.display = "flex";
+            if(loginCode){
+                document.getElementById("input").value = loginCode;
+
+                submitPassword()
+            }
+            else{
+                document.getElementById("toptext").innerText = `Admin Controls Login`;
+                document.getElementById("textboxA").innerText = "Enter temporary code from SLU on the Move email:";
+                document.getElementById("input").style.display = "block";
+                document.getElementById("buttonA").style.display = "block";
+                document.getElementById("buttonA").onclick = submitPassword;
+
+                document.getElementById("textboxB").innerText = "To generate a new code click the button below:";
+                document.getElementById("buttonB").style.display = "block";
+                document.getElementById("buttonB").onclick = generateCode;
+            }
+            
+        }
+        function generateCode()
+        {   
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+            fetchWithTimeout("/generateAdminCode").then(data =>{
+                    // If there is no bike id then do this with data
+                    overlay.style.display = "none";
+
+                document.getElementById("buttonA").style.display = "none";
+                document.getElementById("textboxB").innerText = "";
+                document.getElementById("photoInput").style.display = "none";
+                document.getElementById("buttonB").style.display = "none";
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+                const select = document.getElementById("mySelect");
+                select.style.display = "none";
+                document.getElementById("input").style.display = "none";
+
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR loading bike list: ${err.message}`;
+                console.error(err);
+            });
+        }
+        function submitPassword()
+        {
+
+            loginCode = document.getElementById("input").value;
+
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            
+            fetchWithTimeout("/adminLogin", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+                listOfOptions = ["Get All Bike Lock Codes","Set New Bike Lock Codes", "Add New User Without Verification","Add Paid User to System",
+                "Remove Paid Users", "Give a User a Time Extension", "Force Check-in Bike", "Check-out bikes (for rides ect.)",
+                "Set New Bike Status", "Remove Bike From System", "Add Bike To System", "Add Helmets", "Remove Helmets"]
+
+
+                fillDropdown(listOfOptions);
+                const dropdown = document.getElementById("mySelect");
+
+                dropdown.style.display = "block";
+
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = "Admin Control Selection Page";
+                document.getElementById("textboxA").innerHTML = "<p>Pick what you would like to do with the dropdown selction box. </p> If you have questions about functionality check the documentation";
+                document.getElementById("input").style.display = "none";
+                document.getElementById("textboxB").innerText = "";
+                document.getElementById("inputB").style.display = "none";
+                document.getElementById("buttonA").style.display = "none";
+
+                document.getElementById("buttonB").style.display = "block";
+                document.getElementById("buttonB").onclick = nextPage;
+
+
+                document.getElementById("input").value = "";
+                document.getElementById("inputB").value = "";
+
+
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
+        function nextPage()
+        {
+            
+            const dropdown = document.getElementById("mySelect");
+            const selectedText = dropdown.value;
+
+            const adminActions = {
+                "Get All Bike Lock Codes": getAllBikeLockCodes,
+                "Set New Bike Lock Codes": setNewBikeLockCodes,
+                "Add New User Without Verification": addNewUserWithoutVerification,
+                "Add Paid User to System": addPaidUser,
+                "Remove Paid Users": removePaidUsers,
+                "Give a User a Time Extension": giveTimeExtension,
+                "Force Check-in Bike": forceCheckinBike,
+                "Check-out bikes": checkoutBikes,
+                "Set New Bike Status": setNewBikeStatus,
+                "Remove Bike From System": removeBikeFromSystem,
+                "Add Bike To System": addBikeToSystem,
+                "Add Helmets": addHelmets,
+                "Remove Helmets": removeHelmets
+            };
+            hideAllPageElements();
+            const action = adminActions[selectedText];
+            if (typeof action === "function") {
+                action();
+            } else {
+                console.warn("No admin action found for:", selectedText);
+            }
+        }
+        function getAllBikeLockCodes()
+        {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+
+            fetchWithTimeout("/allBikeLockCodes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = "Bike Lock Code Page";
+                const rows = data.bike_list.map(b => ([
+                { value: b.id },
+                { value: b.status, color: b.color },
+                { value: b.code}
+                ]));
+
+                buildTable({
+                tableId: "bikeTable",
+                headingText: `Status at: ${data.time}`,
+                headers: ["Bike #", "Status", "Code"],
+                rows
+                });
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+                document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
+        function setNewBikeLockCodes() 
+        {
+            document.getElementById("toptext").innerText = "Set New Lock Codes";
+            document.getElementById("textboxA").innerHTML = "<p> Press the button below to generate new random lock codes</p> <p> If you want to <b>not</b> change the codes for any locks add the bike id in the text box below seperated by commas </p> <p> Example:<br> 4, 5, 6, 9 </p> The bikes 1-3 and 7-8 and 10 would be updated"
+            document.getElementById("textboxB").innerHTML = "Current Bike Status:"
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+            document.getElementById("textboxB").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("buttonA").style.display = "block";
+
+            fetchWithTimeout("/allBikeLockCodes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+
+                const rows = data.bike_list.map(b => ([
+                { value: b.id },
+                { value: b.status, color: b.color },
+                { value: b.code}
+                ]));
+
+                buildTable({
+                tableId: "bikeTable2",
+                headers: ["Bike #", "Status", "Code"],
+                rows
+                });
+                document.getElementById("bikeTable2").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+            document.getElementById("buttonA").onclick = generateLockCodes;
+        }
+
+        function generateLockCodes() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const bike_ids = document.getElementById("input").value;
+            hideAllPageElements();
+
+            fetchWithTimeout("/generateLockCodes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode,  bike_ids})
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = "Bike Lock Code Page";
+                const rows = data.bike_list.map(b => ([
+                { value: b.id },
+                { value: b.status, color: b.color },
+                { value: b.code}
+                ]));
+
+                buildTable({
+                tableId: "bikeTable",
+                headingText: `Status at: ${data.time}`,
+                headers: ["Bike #", "Status", "Code"],
+                rows
+                });
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+                document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
+        function addNewUserWithoutVerification() {}
+        function addPaidUser() {}
+        function removePaidUsers() {}
+        function giveTimeExtension() {}
+        function forceCheckinBike() {}
+        function checkoutBikes() {}
+        function setNewBikeStatus() {}
+        function removeBikeFromSystem() {}
+        function addBikeToSystem() {}
+        function addHelmets() {}
+        function removeHelmets() {}
+
+
+
+        
+        let loginCode = null;
+
+        window.onload = populatePage;
+
+
+        
+    </script>
+    </div>
+</body>
+</html>
