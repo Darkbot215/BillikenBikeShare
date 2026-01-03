@@ -135,6 +135,32 @@
             max-width: 900px;     /* desktop-friendly width */
             margin: 0 auto;       /* center on desktop */
         }
+        .date-input {
+            width: 100%;
+            font-size: var(--font-size-2); /* match your textareas/dropdowns */
+            padding: 2vw;                   /* large clickable area */
+            border-radius: 2vw;
+            border: 1px solid #999;
+            box-sizing: border-box;
+
+            
+            transform: scale(3);   /* 1.5x bigger */
+            transform-origin: top left; /* keeps alignment correct */
+                /* improves vertical alignment */
+
+            /* optional: nicer background */
+            background-color: white;
+        }
+
+
+        /* Optional: make the calendar icon bigger */
+        .date-input::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            padding: 0.5em;                 /* makes the icon easier to tap */
+        }
+
+
+
         @media (min-width: 768px) {
             body {
                 background-color: #a0c4e3; /* darker outside */
@@ -164,6 +190,7 @@
                 margin-top: 16px;
                 margin-bottom: 16px;
             }
+            
 
             .form-control {
                 margin-top: 16px;
@@ -231,10 +258,20 @@
     <textarea id="inputB" style="display: none;"></textarea>
 
 
+
+
     
     <select id="mySelect" class="dropdown" style="display: none;">
         <option value="None">None</option>
     </select>
+
+            <input
+    type="date"
+    id="dateInput"
+    class="form-control"
+    style="display:none;"
+    >
+
     <button id = "buttonB" style="display: none;">Submit</button> 
 
     <table id = "bikeTable2">    </table>
@@ -289,7 +326,8 @@
                 "mySelect",
                 "buttonA",
                 "buttonB",
-                "overlaySpinner"
+                "dateInput",
+
             ];
 
             elementsToHide.forEach(id => {
@@ -603,13 +641,14 @@
             const overlay = document.getElementById("overlaySpinner");
             overlay.style.display = "flex";
             const bike_ids = document.getElementById("input").value;
-            hideAllPageElements();
 
             fetchWithTimeout("/generateLockCodes", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ loginCode,  bike_ids})
             }).then(data =>{
+                hideAllPageElements();
+
                 overlay.style.display = "none";
 
                 document.getElementById("toptext").innerText = "Bike Lock Code Page";
@@ -634,8 +673,102 @@
                 console.error(err);
             });
         }
-        function addNewUserWithoutVerification() {}
-        function addPaidUser() {}
+
+        function addNewUserWithoutVerification() {
+            document.getElementById("toptext").innerText = "Add a New User Without Verification";
+            document.getElementById("textboxA").innerHTML = "Enter the email of the user in the box below:"
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("buttonA").style.display = "block";
+
+            document.getElementById("buttonA").onclick = addNewUserResponse;
+        }
+        function addNewUserResponse(){
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const user_email = document.getElementById("input").value;
+
+            fetchWithTimeout("/addUserWithoutVerification", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode,  user_email})
+            }).then(data =>{
+                overlay.style.display = "none";
+                hideAllPageElements();
+
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+
+
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+                document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
+        function addPaidUser() {
+            document.getElementById("toptext").innerText = "Add a New Payment for a user";
+            document.getElementById("textboxA").innerHTML = "<p>Enter the email of the user in the box below"
+            
+            document.getElementById("textboxB").innerHTML = "<p>Enter date by chosing on the dropdown </p> If you need more precision, manually enter the date by selecting other and then entering in the (small) box below the dropdown:"
+            
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+            document.getElementById("textboxB").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            fillDropdown(["Fall (Ends Dec 31st)","Spring (Ends May 31st)","Other"])
+            const dropdown = document.getElementById("mySelect");
+
+            dropdown.style.display = "block";
+
+            const datethingy = document.getElementById("dateInput");
+            datethingy.style.display = "block";
+            
+            document.getElementById("buttonB").style.display = "block";
+
+            document.getElementById("buttonB").onclick = addFullPaidUser;
+        }
+        function addFullPaidUser() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const user_email = document.getElementById("input").value;
+            const selectedDate = document.getElementById("dateInput").value;
+            const dropdownVal = document.getElementById("mySelect").value;
+
+
+            fetchWithTimeout("/addPaidUser", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode,  user_email, selectedDate, dropdownVal})
+            }).then(data =>{
+                overlay.style.display = "none";
+                hideAllPageElements();
+
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+
+
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+                document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
         function removePaidUsers() {}
         function giveTimeExtension() {}
         function forceCheckinBike() {}

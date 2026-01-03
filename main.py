@@ -623,7 +623,6 @@ def generateLockCodes():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     new_codes = []
     for row in values:
         if int(row[0]) in skips:
@@ -634,20 +633,156 @@ def generateLockCodes():
     body = {
         'values': [[code] for code in new_codes]
     }
-    print(body)
     sheet = get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
     return allLockCodes()
 
+@app.route("/addUserWithoutVerification", methods = ["POST"])
+def addUserWithoutVerification():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+
+    email = data.get("user_email", "")
+    email = email.strip().lower()
+    print(email)
+    if not emailChecker(email, False):
+        return error("The email sent was invalid")
+
+    RANGE_NAME = "UserLog!A2:G"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    user_list = [row[0] for row in values]
+    if email in user_list:
+        email_idx = user_list.index(email)
+        requests = [{
+            "deleteDimension": {
+                "range": {
+                    "sheetId": bike_sheet_dict["UserLog"],
+                    "dimension": "ROWS",
+                    "startIndex": email_idx + 1,
+                    "endIndex": email_idx + 2
+                },
+            }
+        }]
+        sheet.batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={'requests': [requests]}
+        ).execute()
+
+    addUser(email, False)
+    target = "UserLog!G2"
+    body = {
+        'values': [[""]]
+    }
+    print(body)
+    sheet = get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+
+    return jsonify({
+        "topText": "Success",
+        "textbox": "The user: "+email+" has been added to the system"
+    })
+
+@app.route("/addPaidUser", methods = ["POST"])
+def addPaidUser():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    email = data.get("user_email", "")
+    email = email.strip().lower()
+    dropdown = data.get("dropdownVal", "")
+    date_selected = data.get("selectedDate", "")
+    if date_selected != "":
+        date_selected = datetime.strptime(date_selected, "%Y-%m-%d").date()
+    today = date.today()
+    if dropdown[:4] == "Fall":
+        date_selected = date(today.year, 12, 31)
+    elif dropdown[:6] == "Spring":
+        date_selected = date(today.year + (today.month > 5), 5, 31)
+
+
+    RANGE_NAME = "UserLog!A2:G"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    user_list = [row[0] for row in values]
+    if email in user_list:
+        email_idx = user_list.index(email)
+    new_hold = holdUpdate(values[email_idx][4], holdToRemove="P")
+    target = "UserLog!D"+str(email_idx+2)+":E"+str(email_idx+2)
+    body = {
+        'values': [[date_selected.strftime("%m/%d/%Y"),new_hold]]
+    }
+    sheet = get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+    return jsonify({
+        "topText": "Success",
+        "textbox": "The user: "+email+" has been added as a dues paying user"
+    })
+
+@app.route("/removePaidUser", methods = ["POST"])
+def removePaidUser():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    email = data.get("user_email", "")
+    email = email.strip().lower()
+    RANGE_NAME = "UserLog!A2:G"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    user_list = [row[0] for row in values]
+    if email in user_list:
+        email_idx = user_list.index(email)
+    new_hold = holdUpdate(values[email_idx][4], holdToAdd="P")
+    target = "UserLog!D"+str(email_idx+2)+":E"+str(email_idx+2)
+    body = {
+        'values': [["",new_hold]]
+    }
+    sheet = get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+    return jsonify({
+        "topText": "Success",
+        "textbox": "The user: "+email+" has been removed from the list of users who have paid dues"
+    })
 
 
 def error(message, status=400):
     return jsonify({"error": message}), status
 
 
-def addUser(email):
+def addUser(email, send_email = True):
     now = now_local()
     sheet = get_sheets_service().spreadsheets()
     today = date.today()
@@ -687,7 +822,7 @@ def addUser(email):
                         ]
                     }
                 ],
-                "fields": "userEnteredValue,userEnteredFormat"
+                "fields": "userEnteredValue"
             }
         }
     ]
@@ -700,7 +835,8 @@ def addUser(email):
             "<a href=" + osSettings["PageUrl"]+"/?email=" + email + "&code=" + str(verification_code) + ">Verify by clicking here </a>"
                      + siteResponse["Emails"]["Verification"][2]+ "<a href="+osSettings["PageUrl"]+"/?vp=1>"+osSettings["PageUrl"]+"/?vp=1 </a>"
     )
-    send_gmail(get_gmail_service(),email, siteResponse["Emails"]["Verification"][0] + str(verification_code),message_body)
+    if send_email:
+        send_gmail(get_gmail_service(),email, siteResponse["Emails"]["Verification"][0] + str(verification_code),message_body)
 
 def emailChecker(email,on = osSettings["EmailChecking"]):
     period = False
