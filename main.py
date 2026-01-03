@@ -728,6 +728,8 @@ def addPaidUser():
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
+    else:
+        return error("email is not in the userlist currently")
     new_hold = holdUpdate(values[email_idx][4], holdToRemove="P")
     target = "UserLog!D"+str(email_idx+2)+":E"+str(email_idx+2)
     body = {
@@ -763,7 +765,12 @@ def removePaidUser():
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
-    new_hold = holdUpdate(values[email_idx][4], holdToAdd="P")
+    else:
+        return error("email is not in the userlist currently")
+    if int(values[email_idx][1]) >= 1:
+        new_hold = holdUpdate(values[email_idx][4], holdToAdd="P")
+    else:
+        new_hold = values[email_idx][4]
     target = "UserLog!D"+str(email_idx+2)+":E"+str(email_idx+2)
     body = {
         'values': [["",new_hold]]
