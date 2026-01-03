@@ -282,10 +282,23 @@
                 ...options,
                 signal: controller.signal
             })
-            .then(res => {
+            .then(async res => {
                 clearTimeout(id);
-                if (!res.ok) throw new Error(`Server responded with ${res.status}`);
-                return res.json();
+
+                let data;
+                try {
+                    data = await res.json();
+                } catch {
+                    data = null;
+                }
+
+                if (!res.ok) {
+                    // 🔑 THIS preserves your Flask error message
+                    const msg = data?.error || `Server responded with ${res.status}`;
+                    throw new Error(msg);
+                }
+
+                return data;
             })
             .catch(err => {
                 clearTimeout(id);

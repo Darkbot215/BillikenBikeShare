@@ -97,13 +97,14 @@ def load_settings(SPREADSHEET_ID):
     print("helmets")
     print(osSettings["helmets"])
     osSettings["adminEmails"] = values[1][1:]
-    osSettings["tempTimeout"] = int(values[2][1])
-    osSettings["checkOutLength"] = int(values[3][1])
-    osSettings["TempBan"] = int(values[4][1]) == 1
-    osSettings["EmailChecking"] = int(values[5][1]) == 1
-    osSettings["MaxBikes"] = int(values[6][1])
-    osSettings["PageUrl"] = values[7][1]
-    osSettings["blankResponses"] = values[8][1:]
+    osSettings["adminLoginSafety"] = int(values[2][1]) == 1
+    osSettings["tempTimeout"] = int(values[3][1])
+    osSettings["checkOutLength"] = int(values[4][1])
+    osSettings["TempBan"] = int(values[5][1]) == 1
+    osSettings["EmailChecking"] = int(values[6][1]) == 1
+    osSettings["MaxBikes"] = int(values[7][1])
+    osSettings["PageUrl"] = values[8][1]
+    osSettings["blankResponses"] = values[9][1:]
 
 
 

@@ -118,18 +118,20 @@ def load_settings():
     print("helmets")
     print(osSettings["helmets"])
     osSettings["adminEmails"] = values[1][1:]
-    osSettings["tempTimeout"] = int(values[2][1])
-    osSettings["checkOutLength"] = int(values[3][1])
-    osSettings["TempBan"] = int(values[4][1]) == 1
-    osSettings["EmailChecking"] = int(values[5][1]) == 1
-    osSettings["MaxBikes"] = int(values[6][1])
-    osSettings["PageUrl"] = values[7][1]
-    osSettings["blankResponses"] = values[8][1:]
-
+    osSettings["adminLoginSafety"] = int(values[2][1]) == 1
+    osSettings["tempTimeout"] = int(values[3][1])
+    osSettings["checkOutLength"] = int(values[4][1])
+    osSettings["TempBan"] = int(values[5][1]) == 1
+    osSettings["EmailChecking"] = int(values[6][1]) == 1
+    osSettings["MaxBikes"] = int(values[7][1])
+    osSettings["PageUrl"] = values[8][1]
+    osSettings["blankResponses"] = values[9][1:]
 
 
 load_settings()
 print(osSettings)
+
+admin_code = [None, None]
 
 @app.route("/table", methods=["GET"])
 def bike_table():
@@ -357,6 +359,7 @@ def checkin():
         email_idx = user_list.index(email)
         print('this user is on the list')
     else:
+        #The user who checked out the bike is not on the user list
         return jsonify({
             "topText": siteResponse["Check-in"]["Error12"][0],
             "textbox": siteResponse["Check-in"]["Error12"][1]
@@ -483,6 +486,166 @@ def verifyUser():
             "topText": siteResponse["VerifyUser"]["TooSlow"][0],
             "textbox": siteResponse["VerifyUser"]["TooSlow"][1]
         })
+
+@app.route("/adminLogin",methods=["POST"])
+def adminLogin(local_use = False, passCode= None):
+    global admin_code
+    if local_use == False:
+        data = request.get_json()
+        passCode = int(data.get("loginCode", ""))
+    if osSettings["adminLoginSafety"]:
+        email = osSettings["adminEmails"][0]
+        RANGE_NAME = "UserLog!A2:G"
+
+        sheet = get_sheets_service().spreadsheets()
+        result = sheet.values().get(
+            spreadsheetId=SPREADSHEET_ID,
+            range=RANGE_NAME
+        ).execute()
+        values = result.get("values", "")
+        print(values)
+        user_list = [row[0] for row in values]
+        if email in user_list:
+            email_idx = user_list.index(email)
+        else:
+            return False
+        if len(values(email_idx)) >= 7:
+            admin_code = [values[5],timeExtractor([6])]
+        else:
+            admin_code = [values[5],now_local()-timedelta(minutes=1)]
+    if admin_code[0] == None or admin_code[1] == None:
+        if local_use:
+            return False, "This code has expired. Get a new one"
+        return error("This code has expired. Get a new one",401)
+    if admin_code[1] < now_local():
+        if local_use:
+            return False, "This code has expired. Get a new one"
+        return error("This code has expired. Get a new one",401)
+    if admin_code[0] != passCode:
+        if local_use:
+            return False, "The code entered is incorrect or is no longer the code"
+        return error("This is no longer the code", 401)
+    if local_use:
+        return True, None
+    return jsonify({
+        "topText": "Code entered successfully",
+        "textbox": "Welcome to the admin system"
+    })
+
+
+
+
+
+@app.route("/generateAdminCode",methods=["GET"])
+def generateAdminCode():
+    global admin_code
+    admin_code = [randint(10000000, 99999999), now_local() + timedelta(minutes=15)]
+    email = osSettings["adminEmails"][0]
+
+    if osSettings["adminLoginSafety"]:
+        RANGE_NAME = "UserLog!A2:G"
+
+        sheet = get_sheets_service().spreadsheets()
+        result = sheet.values().get(
+            spreadsheetId=SPREADSHEET_ID,
+            range=RANGE_NAME
+        ).execute()
+        values = result.get("values", "")
+        print(values)
+        user_list = [row[0] for row in values]
+        if email in user_list:
+            email_idx = user_list.index(email)
+        else:
+            return False
+        target = "UserLog!F" + str(email_idx + 1)+":G"+str(email_idx+1)
+        body = {'values': [[admin_code[0],admin_code[1].strftime("%m/%d/%Y %H:%M:%S")]]}
+        sheet = get_sheets_service().spreadsheets()
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID, range=target,
+            valueInputOption="USER_ENTERED", body=body).execute()
+    full_url = osSettings["PageUrl"]+"/admin?AdminPass="+str(admin_code[0])
+    send_gmail(get_gmail_service(),email, "Admin temp code: "+str(admin_code[0]),"<p> For 15 minutes of access the new admin code is: "+str(admin_code[0])
+               + "</p> For even easier access use this link: <br> <a href="+full_url+">"+full_url+"</a>")
+
+    return jsonify({
+        "topText": "New Code Made",
+        "textbox": "The code has been sent to the sluonthemove email with an access link"
+    })
+
+@app.route("/allBikeLockCodes", methods = ["POST"])
+def allLockCodes():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    RANGE_NAME = "Simple Bike Summary!A2:C"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", [])
+    now = now_local()
+    current_time = now.strftime("%I:%M %p")
+    bikelist = []
+    for row in values:
+        if row[1] == "Checked-in":
+            output_color = "#88E788"
+        elif row[1] == "Checked-out":
+            output_color = "#FF7F7F"
+        else:
+            output_color = "#FFAC1C"
+        bikelist.append({"id": row[0], "status": row[1], "color": output_color, "code":row[2]})
+    print(bikelist)
+    return jsonify({
+        "time": current_time,
+        "bike_list": bikelist,
+    })
+
+@app.route("/generateLockCodes", methods = ["POST"])
+def generateLockCodes():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    bike_ids = data.get("bike_ids", "")
+    skips = []
+    if len(bike_ids) > 0:
+        skips = sorted(int(x.strip()) for x in bike_ids.split(","))
+    RANGE_NAME = "Simple Bike Summary!A2:C"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    new_codes = []
+    for row in values:
+        if int(row[0]) in skips:
+            new_codes.append(int(row[2]))
+        else:
+            new_codes.append(randint(1000,9999))
+    target = "Simple Bike Summary!C2:C"
+    body = {
+        'values': [[code] for code in new_codes]
+    }
+    print(body)
+    sheet = get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+    return allLockCodes()
+
+
+
+def error(message, status=400):
+    return jsonify({"error": message}), status
+
 
 def addUser(email):
     now = now_local()
@@ -1073,6 +1236,11 @@ def send_gmail(service,to,subject,html_contents,attachments=None):
 @app.route("/")
 def index():
     return render_template("cow.html")
+
+@app.route("/admin")
+def admin():
+    return render_template("admin.html")
+
 
 @app.route("/health", methods=["GET"])
 def health():
