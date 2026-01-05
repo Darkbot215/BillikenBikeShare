@@ -784,6 +784,60 @@ def removePaidUser():
         "textbox": "The user: "+email+" has been removed from the list of users who have paid dues"
     })
 
+@app.route("/giveTimeExtension", methods = ["POST"])
+def giveTimeExtension():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    email = data.get("user_email", "")
+    email = email.strip().lower()
+    RANGE_NAME = "Simple Bike Summary!A2:G"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    email_idxs = [
+        i
+        for i, row in enumerate(values)
+        if len(row) > 4 and row[4] == email
+    ]
+    if not email_idxs:
+        return error("This user is not currently checking out a bike")
+    try:
+        ext_time = round(float(data.get("extension_length", "")))
+    except:
+        return error("You did not enter a whole number of hours")
+
+    for indexes in email_idxs:
+        row = values[indexes]
+        if len(row) <= 6:
+            row.extend([""] * (7 - len(row)))
+        new_extension = extensionUpdate(row[6], extensionToAdd='X'*ext_time)
+        target = "Simple Bike Summary!G" + str(indexes + 2)
+        body = {
+            'values': [[new_extension]]
+        }
+        sheet = get_sheets_service().spreadsheets()
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID, range=target,
+            valueInputOption="USER_ENTERED", body=body).execute()
+
+
+
+    return jsonify({
+        "topText": "Success",
+        "textbox": "The user: "+email+" has been given a "+str(ext_time) +" hour extension"
+    })
+
+
+
+
 
 def error(message, status=400):
     return jsonify({"error": message}), status
@@ -1302,6 +1356,68 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = osS
 
         return f"#{codeString:<6}{timeString}"
     return ""
+
+def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "", ):
+    codeDict = {}
+    #Unpack the current dictionary
+    if extension_code != "":
+        if extension_code[0] == "#":
+            code = extension_code[1:6]
+            if "X" in code:
+                position = code.index("X")
+                length_of_extension = int(code[position + 1:position+3], 16)
+                codeDict.update({"X":length_of_extension})
+            if "M" in code:
+                now = now_local()
+                email_time = extension_code[7:]
+                temp = timeExtractor(email_time)
+                codeDict.update({"M": temp})
+
+            # Remove all items we need to remove from the dictionary
+            for item in codeDict.keys():
+                if item in "M":
+                    pass
+                elif item in extensionToRemove:
+                    if codeDict[item] > 0:
+                        codeDict[item] = codeDict[item] - 1
+        else: #I don't think we should be here? maybe email error code?
+            return extension_code
+    #Add all items we need to add
+    for item in extensionToAdd:
+        if item in codeDict.keys():
+            if item == "M":
+                now = now_local()
+                codeDict.update({"M": now})
+            elif codeDict[item] < 255:
+                codeDict[item] = codeDict[item] + 1
+        else:
+            if item == "M":
+                now = now_local()
+                codeDict.update({"M": now})
+            else:
+                codeDict.update({item: 1})
+
+    codeString = ""
+    timeString = ""
+    for item in codeDict.keys():
+        if item == "X" and codeDict[item] > 0:
+            codeString = codeString+item+ f"{codeDict[item]:X}"
+        elif item == "M":
+            print(codeDict[item])
+            timeString = codeDict[item].strftime("%m/%d/%Y %H:%M:%S")
+            codeString = codeString+item
+
+
+    if codeString != "":
+        if len(codeString) > 5:
+            #Send an email maybe of the error
+            return extension_code
+        while len(codeString) < 6:
+            codeString = codeString+" "
+
+        return f"#{codeString:<6}{timeString}"
+    return ""
+
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx):
     try:
