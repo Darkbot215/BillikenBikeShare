@@ -131,7 +131,8 @@ def load_settings():
 load_settings()
 print(osSettings)
 
-admin_code = [None, None]
+
+admin_code = [3, now_local()+timedelta(2)]
 
 @app.route("/table", methods=["GET"])
 def bike_table():
@@ -293,7 +294,7 @@ def checkOut():
         bike_idx = bike_list.index(bike)
         if values[bike_idx][1] == "Checked-in": #shit, we made it, we can check out
             driveCheckout(user_info,email_idx,bike,bike_idx,helmet)
-            message_body = (siteResponse["Emails"]["Unlocking"][1]
+            message_body = (siteResponse["Emails"]["Unlocking"][1] +" #"+str(values[bike_idx][0])+": "
                     +str(values[bike_idx][2])+
                     siteResponse["Emails"]["Unlocking"][2]
             )
@@ -835,8 +836,13 @@ def giveTimeExtension():
         "textbox": "The user: "+email+" has been given a "+str(ext_time) +" hour extension"
     })
 
-
-
+@app.route("/forceCheckinBike", methods = ["POST"])
+def forceCheckinBike():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
 
 
 def error(message, status=400):
