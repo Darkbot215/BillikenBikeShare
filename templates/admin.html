@@ -305,12 +305,6 @@
                 option.textContent = item;
                 select.appendChild(option);
             })
-            for (let i = 1; i <= length; i++) {
-                const option = document.createElement("option");
-                option.value = i;
-                option.textContent = i;
-                select.appendChild(option);
-            }
         }
         function hideAllPageElements(clearContent = true) {
             // List of all elements you want to hide
@@ -857,7 +851,96 @@
             });
         }
         
-        function forceCheckinBike() {}
+        function forceCheckinBike() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+            document.getElementById("toptext").innerText = "Force Check-in a Bike";
+            document.getElementById("textboxA").innerHTML = "Select the bike-id of the bike you want to check in"            
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+
+            fetchWithTimeout("/allBikeLockCodes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                const bikeIds = data.bike_list.map(b => b.id);
+
+                fillDropdown(bikeIds);
+                document.getElementById("mySelect").style.display = "block";
+
+
+                const rows = data.bike_list.map(b => ([
+                { value: b.id },
+                { value: b.status, color: b.color },
+                { value: b.code}
+                ]));
+
+                buildTable({
+                tableId: "bikeTable2",
+                headers: ["Bike #", "Status", "Code"],
+                rows
+                });
+                document.getElementById("bikeTable2").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+            
+            document.getElementById("buttonB").style.display = "block";
+
+            document.getElementById("buttonB").onclick = forceCheckinBikeButton;
+        }
+        function forceCheckinBikeButton() {
+
+            
+            const select = document.getElementById("mySelect");
+            const bikeID = select.value;
+
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+
+
+            fetchWithTimeout("/forceCheckinBike", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode,  bikeID})
+            }).then(data =>{
+                overlay.style.display = "none";
+                hideAllPageElements();
+
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+
+                const rows = data.bike_list.map(b => ([
+                { value: b.id },
+                { value: b.status, color: b.color },
+                { value: b.code}
+                ]));
+
+                buildTable({
+                tableId: "bikeTable2",
+                headers: ["Bike #", "Status", "Code"],
+                rows
+                });
+                document.getElementById("bikeTable2").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+
+        }
         function checkoutBikes() {}
         function setNewBikeStatus() {}
         function removeBikeFromSystem() {}

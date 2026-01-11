@@ -442,25 +442,20 @@
 
             overlay.style.display = "none";
 
-            if(verificationCode && email){
-                document.getElementById("input").value = email;
-            document.getElementById("inputB").value = verificationCode;
-                submitVerify()
-            }
-            else{
-                document.getElementById("toptext").innerText = `Email Verification Page`;
-                document.getElementById("textboxA").innerText = "Enter SLU Email:";
-                document.getElementById("input").style.display = "block";
-                document.getElementById("input").value = email || "";
-                
-                document.getElementById("textboxB").innerText = "Enter Verification Code:";
-                document.getElementById("inputB").style.display = "block";
-                document.getElementById("inputB").value = verificationCode || "";
 
-                document.getElementById("buttonB").style.display = "block";
-                document.getElementById("buttonB").onclick = submitVerify;
+            document.getElementById("toptext").innerText = `Email Verification Page`;
+            document.getElementById("textboxA").innerText = "Enter SLU Email:";
+            document.getElementById("input").style.display = "block";
+            document.getElementById("input").value = email || "";
+            
+            document.getElementById("textboxB").innerText = "Enter Verification Code:";
+            document.getElementById("inputB").style.display = "block";
+            document.getElementById("inputB").value = verificationCode || "";
 
-            }
+            document.getElementById("buttonB").style.display = "block";
+            document.getElementById("buttonB").onclick = submitVerify;
+
+
         }
 
         function submitVerify(newCode = 0)
