@@ -852,27 +852,22 @@
         }
         
         function forceCheckinBike() {
-            const overlay = document.getElementById("overlaySpinner");
-            overlay.style.display = "flex";
-
-            document.getElementById("toptext").innerText = "Force Check-in a Bike";
-            document.getElementById("textboxA").innerHTML = "Select the bike-id of the bike you want to check in"            
+                        document.getElementById("toptext").innerText = "Check-in bikes";
+            document.getElementById("textboxA").innerHTML = "<p> To check in mulitple bikes at one time enter all bikes to be checked in seperated by commas </p> <p> Example:<br> 4, 5, 6, 9 </p> Those bikes, will be set to status checked-in"
+            document.getElementById("textboxB").innerHTML = "Current Bike Status:"
             
             document.getElementById("toptext").style.display = "block";
             document.getElementById("textboxA").style.display = "block";
+            document.getElementById("textboxB").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("buttonA").style.display = "block";
 
             fetchWithTimeout("/allBikeLockCodes", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ loginCode })
             }).then(data =>{
-                overlay.style.display = "none";
-
-                const bikeIds = data.bike_list.map(b => b.id);
-
-                fillDropdown(bikeIds);
-                document.getElementById("mySelect").style.display = "block";
-
 
                 const rows = data.bike_list.map(b => ([
                 { value: b.id },
@@ -891,16 +886,13 @@
                 document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
                 console.error(err);
             });
-            
-            document.getElementById("buttonB").style.display = "block";
+            document.getElementById("buttonA").onclick = forceCheckinBikeButton;
 
-            document.getElementById("buttonB").onclick = forceCheckinBikeButton;
         }
         function forceCheckinBikeButton() {
 
             
-            const select = document.getElementById("mySelect");
-            const bikeID = select.value;
+            const bike_ids = document.getElementById("input").value;
 
             const overlay = document.getElementById("overlaySpinner");
             overlay.style.display = "flex";
@@ -910,7 +902,7 @@
             fetchWithTimeout("/forceCheckinBike", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ loginCode,  bikeID})
+                body: JSON.stringify({ loginCode,  bike_ids})
             }).then(data =>{
                 overlay.style.display = "none";
                 hideAllPageElements();

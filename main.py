@@ -342,7 +342,7 @@ def checkin():
             "topText": siteResponse["Check-in"]["Error11"][0],
             "textbox": siteResponse["Check-in"]["Error11"][1]
         })
-    email = values[bike_idx][-1]
+    email = values[bike_idx][-1] #This works fine because the range is limited.
 
     email = email.strip().lower()
     # Find if email is in list
@@ -905,6 +905,82 @@ def adminCheckoutBike():
         "bike_list":bikelist
     })
 
+@app.route("/forceCheckinBike", methods = ["POST"])
+def forceCheckinBike():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    bike_ids = data.get("bike_ids", "")
+    skips = []
+    if len(bike_ids) > 0:
+        check_in_bikes = sorted(int(x.strip()) for x in bike_ids.split(","))
+
+    #Need to do 4 things
+    #Email individual user about failed check-in?
+    #hold option for user who failed to check in (default off)
+    #Email sluonthemove about failed check-in
+    RANGE_NAME = "Simple Bike Summary!A2:E"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    bike_values = result.get("values", "")
+    RANGE_NAME = "UserLog!A2:G"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    user_values = result.get("values", "")
+    user_list = [row[0] for row in user_values]
+
+    bikes_checked_in = []
+    for idx, row in enumerate(bike_values):
+        if int(row[0]) in check_in_bikes:
+            bikes_checked_in.append(int(row[0]))
+            bike_values[idx][1] = "Checked-in"
+            print(row)
+            if len(row) > 4:
+                now = now_local()
+                email = row[-1]
+                send_gmail(get_gmail_service(), osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
+                           "The prior user was " + email + " and an Admin has now checked-in the bike")
+                if email != osSettings["adminEmails"][0]:
+                    send_gmail(get_gmail_service(), email, "Bike #" + str(row[0]) + siteResponse["Emails"]["Return"][0],
+                               siteResponse["Emails"]["Return"][1])
+                if email in user_list:
+                    email_idx = user_list.index(email)
+                    driveCheckin(user_list[email_idx], email_idx, int(row[0]), idx, -1, "")
+                else:
+                    driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
+
+            else:
+                send_gmail(get_gmail_service(), osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
+                           "The prior user was not able to be found in sheets and an Admin has now checked-in the bike")
+                print(row[0])
+                driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
+
+    bikelist = []
+    for row in bike_values:
+        if row[1] == "Checked-in":
+            output_color = "#88E788"
+        elif row[1] == "Checked-out":
+            output_color = "#FF7F7F"
+        else:
+            output_color = "#FFAC1C"
+        bikelist.append(
+            {"id": row[0], "status": row[1], "color": output_color, "code": row[2]})
+    print(bikelist)
+    return jsonify({
+        "topText": "Bikes Successfully checked in",
+        "textbox": "These bikes: " + str(bikes_checked_in) + " have been checked in",
+        "bike_list": bikelist
+    })
 
 def error(message, status=400):
     return jsonify({"error": message}), status
@@ -1208,33 +1284,11 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
     # Update bike summary with checked-out
     # Update bike specific log (add a row)
     # Update helmet log
-    hold = user_info[4]
-    if hold_long_term:
-        hold = holdUpdate(hold, holdToAdd="L")
-    hold = holdUpdate(hold, holdToRemove="U")
+
+
     now = now_local()
 
     requests = [
-
-        # Update user log: update hold
-
-        {
-            "updateCells": {
-                "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
-                    "startRowIndex": email_idx + 1,
-                    "endRowIndex": email_idx + 2,
-                    "startColumnIndex": 4,
-                    "endColumnIndex": 5  # ONLY the hold column
-                },
-                "rows": [{
-                    "values": [
-                        {"userEnteredValue": {"stringValue": hold}}
-                    ]
-                }],
-                "fields": "userEnteredValue"
-            }
-        },
         {
             "updateCells": {
                 "range": {
@@ -1308,6 +1362,31 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         },
     ]
 
+    if user_info[0] != "N/A":
+        hold = user_info[4]
+        if hold_long_term:
+            hold = holdUpdate(hold, holdToAdd="L")
+        hold = holdUpdate(hold, holdToRemove="U")
+        requests.extend([
+        {
+            "updateCells": {
+                "range": {
+                    "sheetId": bike_sheet_dict["UserLog"],
+                    "startRowIndex": email_idx + 1,
+                    "endRowIndex": email_idx + 2,
+                    "startColumnIndex": 4,
+                    "endColumnIndex": 5  # ONLY the hold column
+                },
+                "rows": [{
+                    "values": [
+                        {"userEnteredValue": {"stringValue": hold}}
+                    ]
+                }],
+                "fields": "userEnteredValue"
+            }
+        }
+        ])
+
     if helmetid != -1:
         requests.extend([
             # Insert new row in helmet log
@@ -1344,6 +1423,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
                     "fields": "userEnteredValue"
                 }
             }])
+    print(requests)
 
     sheet.batchUpdate(
         spreadsheetId=SPREADSHEET_ID,
