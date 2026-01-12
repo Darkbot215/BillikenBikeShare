@@ -836,13 +836,74 @@ def giveTimeExtension():
         "textbox": "The user: "+email+" has been given a "+str(ext_time) +" hour extension"
     })
 
-@app.route("/forceCheckinBike", methods = ["POST"])
-def forceCheckinBike():
+@app.route("/adminCheckoutBike", methods = ["POST"])
+def adminCheckoutBike():
     data = request.get_json()
     passCode = int(data.get("loginCode", ""))
     good_code, errormessage = adminLogin(True, passCode)
     if not good_code:
         return error(errormessage)
+    bike_ids = data.get("bike_ids", "")
+    skips = []
+    if len(bike_ids) > 0:
+        check_out_bikes = sorted(int(x.strip()) for x in bike_ids.split(","))
+    RANGE_NAME = "UserLog!A2:G"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    email = osSettings["adminEmails"][0]
+    user_list = [row[0] for row in values]
+    if email in user_list:
+        email_idx = user_list.index(email)
+    else:
+        return error(email+" which is listed as 1st admin is not in the userlist. This is an error blocking a mass check-out. Orignally this was supposed to be sluonthemove@slu.edu")
+    user_info = values[email_idx]
+    RANGE_NAME = "Simple Bike Summary!A2:C"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    bikes_checked_out = []
+    for idx, row in enumerate(values):
+        if int(row[0]) in check_out_bikes:
+            if row[1] != "Checked-out":
+                values[idx][1] = "Checked-out"
+                bikes_checked_out.append(int(row[0]))
+                driveCheckout(user_info, email_idx, int(row[0]), idx, -1)
+                message_body = (siteResponse["Emails"]["Unlocking"][1] + " #" + str(values[idx][0]) + ": "
+                                + str(values[idx][2]) +
+                                siteResponse["Emails"]["Unlocking"][2]
+                                )
+                send_gmail(get_gmail_service(), email,
+                           siteResponse["Emails"]["Unlocking"][0] + str(values[idx][2]),
+                           message_body)
+    bikelist = []
+    for row in values:
+        if row[1] == "Checked-in":
+            output_color = "#88E788"
+        elif row[1] == "Checked-out":
+            output_color = "#FF7F7F"
+        else:
+            output_color = "#FFAC1C"
+        if int(row[0]) in bikes_checked_out:
+            checkout_color = "#6FCBF7"
+        else:
+            checkout_color = "#FFFFFF"
+        bikelist.append({"id": row[0], "status": row[1], "color": output_color, "code": row[2], "code_color":checkout_color})
+    print(bikelist)
+    return jsonify({
+        "topText": "Bikes Successfuly checked out",
+        "textbox": "These bikes: "+str(bikes_checked_out)+" have been checked out",
+        "bike_list":bikelist
+    })
 
 
 def error(message, status=400):
