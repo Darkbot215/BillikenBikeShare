@@ -648,14 +648,14 @@
                 document.getElementById("toptext").innerText = "Bike Lock Code Page";
                 const rows = data.bike_list.map(b => ([
                 { value: b.id },
-                { value: b.status, color: b.color },
-                { value: b.code}
+                { value: b.oldCode, color: b.oldColor },
+                { value: b.newCode, color: b.newColor}
                 ]));
 
                 buildTable({
                 tableId: "bikeTable",
                 headingText: `Status at: ${data.time}`,
-                headers: ["Bike #", "Status", "Code"],
+                headers: ["Bike #", "Old Code", "New Code"],
                 rows
                 });
                 document.getElementById("toptext").style.display = "block";
@@ -933,6 +933,7 @@
             });
 
         }
+        
         function checkoutBikes() {
             document.getElementById("toptext").innerText = "Check Out Bikes";
             document.getElementById("textboxA").innerHTML = "<p> To check out bikes under main admin account (sluonthemove@slu.edu) enter all bikes to be checked out seperated by commas </p> <p> Example:<br> 4, 5, 6, 9 </p> Those bikes, if they are not already checked-out, would be checked out under the admin account"
@@ -1006,7 +1007,57 @@
                 console.error(err);
             });
         }
-        function setNewBikeStatus() {}
+        
+        function setNewBikeStatus() {
+            const overlay = document.getElementById("overlaySpinner")
+            overlay.style.display = "flex";
+
+            document.getElementById("toptext").innerText = "Set a Bike to a new custom (not checked-in/checked-out) Status";
+            document.getElementById("textboxA").innerHTML = "Enter the main status of the bike:"
+            document.getElementById("textboxB").innerHTML = "Enter additonal notes if any:"
+
+
+            fetchWithTimeout("/table").then(data =>{
+                    // If there is no bike id then do this with data
+                    overlay.style.display = "none";
+                    
+                    const bike_list = data.bike_list
+                    const select = document.getElementById("mySelect");
+                    select.innerHTML = "";
+                    const option2 =  document.createElement("option");
+                    option2.value = -1;
+                    option2.textContent = "Select the Bike-id from dropdown";
+                    select.appendChild(option2);
+                    bike_list.forEach(b => {
+                        const option = document.createElement("option");
+                        
+                        option.value = b.id;
+                        option.textContent = b.id;
+                        select.appendChild(option);
+                    })
+                    select.style.display = "block";
+                    
+
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR loading bike list: ${err.message}`;
+                console.error(err);
+            });
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+            document.getElementById("textboxB").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("inputB").style.display = "block";
+
+            document.getElementById("buttonB").style.display = "block";
+            document.getElementById("buttonB").onclick = setNewBikeStatusButton;
+        }
+        function setNewBikeStatusButton(){
+
+        }
+        
         function removeBikeFromSystem() {}
         function addBikeToSystem() {}
         function addHelmets() {}

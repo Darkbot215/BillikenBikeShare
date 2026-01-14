@@ -488,6 +488,8 @@ def verifyUser():
             "textbox": siteResponse["VerifyUser"]["TooSlow"][1]
         })
 
+
+#Admin controls
 @app.route("/adminLogin",methods=["POST"])
 def adminLogin(local_use = False, passCode= None):
     global admin_code
@@ -625,7 +627,9 @@ def generateLockCodes():
     ).execute()
     values = result.get("values", "")
     new_codes = []
+    old_codes = []
     for row in values:
+        old_codes.append(int(row[2]))
         if int(row[0]) in skips:
             new_codes.append(int(row[2]))
         else:
@@ -638,7 +642,26 @@ def generateLockCodes():
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
-    return allLockCodes()
+
+
+    now = now_local()
+    current_time = now.strftime("%I:%M %p")
+    bikelist = []
+    for idx, row in enumerate(values):
+
+        if old_codes[idx] != new_codes[idx]:
+            new_color_output = "#88E788"
+            old_color_output = "#FFAC1C"
+
+        else:
+            new_color_output = "#6FCBF7"
+            old_color_output = "#6FCBF7"
+        bikelist.append({"id": row[0], "oldCode": old_codes[idx],  "newCode": new_codes[idx], "oldColor": old_color_output,"newColor":new_color_output})
+    print(bikelist)
+    return jsonify({
+        "time": current_time,
+        "bike_list": bikelist,
+    })
 
 @app.route("/addUserWithoutVerification", methods = ["POST"])
 def addUserWithoutVerification():
