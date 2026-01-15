@@ -55,17 +55,6 @@ def get_gmail_service():
 
 SPREADSHEET_ID = "1o-r-D--evfEa3iHuViri5V3fb33a7iv_Op4IspKnO-0"
 
-
-spreadsheet = get_sheets_service().spreadsheets().get(
-    spreadsheetId=SPREADSHEET_ID
-).execute()
-bike_sheet_dict = {}
-for sheet in spreadsheet["sheets"]:
-    props = sheet["properties"]
-    bike_sheet_dict.update({props["title"]: props["sheetId"]})
-    print(props["title"], props["sheetId"])
-
-
 app = Flask(__name__)
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
@@ -80,7 +69,16 @@ def now_local():
 
 siteResponse = {}
 osSettings = {}
+bike_sheet_dict = {}
 def load_settings():
+    bike_sheet_dict.clear()
+    spreadsheet = get_sheets_service().spreadsheets().get(
+        spreadsheetId=SPREADSHEET_ID
+    ).execute()
+    for sheet in spreadsheet["sheets"]:
+        props = sheet["properties"]
+        bike_sheet_dict.update({props["title"]: props["sheetId"]})
+        print(props["title"], props["sheetId"])
     siteResponse.clear()
     RANGE_NAME = "SiteResponseMessages!A1:E"
 
@@ -930,7 +928,7 @@ def adminCheckoutBike():
 
 @app.route("/forceCheckinBike", methods = ["POST"])
 def forceCheckinBike():
-    data = request.get_json()
+    data: object = request.get_json()
     passCode = int(data.get("loginCode", ""))
     good_code, errormessage = adminLogin(True, passCode)
     if not good_code:
@@ -1004,6 +1002,211 @@ def forceCheckinBike():
         "textbox": "These bikes: " + str(bikes_checked_in) + " have been checked in",
         "bike_list": bikelist
     })
+
+@app.route("/setNewBikeStatus", methods = ["POST"])
+def setNewBikeStatus():
+    data: object = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    new_status = data.get("new_status", "")
+    new_notes = data.get("new_notes", "")
+    dropdownVal = data.get("dropdownVal", "")
+    if new_status.strip() == "" or int(dropdownVal) == -1:
+        return error("Did not enter a full status or select a bike")
+    RANGE_NAME = "Simple Bike Summary!A2:D"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    for idx, row in enumerate(values):
+        if int(row[0]) == int(dropdownVal):
+            target = "Simple Bike Summary!B" + str(idx + 2)+":"+str(idx + 2)
+            body = {
+                'values': [[new_status,row[2],new_notes,"","",""]]
+            }
+            sheet = get_sheets_service().spreadsheets()
+            sheet.values().update(
+                spreadsheetId=SPREADSHEET_ID, range=target,
+                valueInputOption="USER_ENTERED", body=body).execute()
+            break
+
+    return jsonify({
+        "topText": "New Bike Status set",
+        "textbox": "This bike: " + str(dropdownVal) + " has been set to a new status of: "+ str(new_status)
+    })
+
+@app.route("/removeBikeFromSystem", methods = ["POST"])
+def removeBikeFromSystem():
+    data: object = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    bikeid = data.get("bikeid", "")
+    RANGE_NAME = "Simple Bike Summary!A2:G"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    bike_list = [int(row[0]) for row in values]
+    if int(bikeid) in bike_list:
+        bike_idx = bike_list.index(int(bikeid))
+        requests = [{
+            "deleteDimension": {
+                "range": {
+                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "dimension": "ROWS",
+                    "startIndex": bike_idx + 1,
+                    "endIndex": bike_idx + 2
+                },
+            }
+        }]
+        sheet.batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={'requests': [requests]}
+        ).execute()
+        return jsonify({
+        "topText": "Bike Successfully Removed",
+        "textbox": "<p>This bike: " + str(bikeid) + " has been removed from the system and can no longer be checked out. </p> The log sheet for the bike has not been removed but can be removed manually"
+    })
+    else:
+        return jsonify({
+        "topText": "Bike Failed to be Removed",
+        "textbox": "This bike: " + str(bikeid) + " was not able to be found on the list"
+    })
+
+@app.route("/addBikeToSystem", methods = ["POST"])
+def addBikeToSystem():
+    data: object = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    bikeid = data.get("bikeid", "")
+    try:
+        bikeid = int(bikeid)
+        if bikeid <= 0:
+            return error("The bikeid entered was not a whole number")
+
+    except:
+        return error("The bikeid entered was not a whole number")
+    RANGE_NAME = "Simple Bike Summary!A2:D"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    bike_ids = [int(row[0]) for row in values]
+    if bikeid in bike_ids:
+        return error("This bikeid is already being used in the system")
+
+    bike_ids.append(bikeid)
+    bike_ids.sort()
+    bike_idx = bike_ids.index(bikeid)
+    random_lock_code = randint(1000,9999)
+    requests = [
+        {
+            "insertDimension": {
+                "range": {
+                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "dimension": "ROWS",
+                    "startIndex": bike_idx+1,
+                    "endIndex": bike_idx+2
+                },
+                "inheritFromBefore": False
+            }
+        },
+        {
+            "updateCells": {
+                "range": {
+                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "startRowIndex": bike_idx+1,
+                    "endRowIndex": bike_idx+2,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": 3
+                },
+                "rows": [
+                    {
+                        "values": [
+                            {"userEnteredValue": {"numberValue": bikeid}},
+                            {"userEnteredValue": {"stringValue": "Checked-in"}},
+                            {"userEnteredValue": {"numberValue": random_lock_code}},
+                                                    ]
+                    }
+                ],
+                "fields": "userEnteredValue"
+            }
+        }
+    ]
+
+    if "Bike"+str(bikeid) not in bike_sheet_dict:
+        code_set = False
+        while not code_set:
+            new_sheet_id = randint(100000000,999999999)
+            if new_sheet_id not in set(bike_sheet_dict.values()):
+                bike_sheet_dict["Bike"+str(bikeid)] = new_sheet_id
+                code_set = True
+        requests.extend([{
+            "addSheet": {
+                "properties": {
+                    "sheetId": bike_sheet_dict["Bike"+str(bikeid)],
+                    "title": "Bike"+str(bikeid),
+                    "gridProperties": {
+                        "rowCount": 5,
+                        "columnCount": 10
+                    }
+                }
+            }
+        }
+        ])
+        requests.extend([
+            {
+                "updateCells": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["Bike"+str(bikeid)],
+                        "startRowIndex": 0,
+                        "endRowIndex": 1,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 4
+                    },
+                    "rows": [
+                        {
+                            "values": [
+                                {"userEnteredValue": {"stringValue": "Timestamp"}},
+                                {"userEnteredValue": {"stringValue": "User ID"}},
+                                {"userEnteredValue": {"stringValue": "Checking in/Out/Maintenance"}},
+                                {"userEnteredValue": {"stringValue": "Notes"}},
+                            ]
+                        }
+                    ],
+                    "fields": "userEnteredValue"
+                }
+            }
+        ])
+
+    sheet.batchUpdate(
+        spreadsheetId=SPREADSHEET_ID,
+        body={'requests': [requests]}
+    ).execute()
+
+
+    return jsonify({
+        "topText": "Bike #"+str(bikeid)+" has been added",
+        "textbox": "This bike has been added to the system and the randomly assigned lock code is <b> "+str(random_lock_code)+"</b>"
+    })
+
+
+
 
 def error(message, status=400):
     return jsonify({"error": message}), status
