@@ -1201,8 +1201,115 @@
             });
         }
 
-        function addHelmets() {}
-        function removeHelmets() {}
+        function addHelmets() {
+            document.getElementById("toptext").innerText = "Add new helmets";
+            document.getElementById("textboxA").innerHTML = "<p> Enter the helmet ids you want to add, if you want to add multiple seperate them with commas </p> <p> Example:<br> 4, 5, 6, 9 </p>"
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("buttonA").style.display = "block";
+
+            fetchWithTimeout("/getHelmetList", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+                document.getElementById("textboxB").innerHTML = data.textbox
+
+                document.getElementById("textboxB").style.display = "block";
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+            document.getElementById("buttonA").onclick = addHelmetsButton;
+        }
+        function addHelmetsButton() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const helmetList = document.getElementById("input").value;
+
+
+            fetchWithTimeout("/addHelmets", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode,  helmetList})
+            }).then(data =>{
+                overlay.style.display = "none";
+                hideAllPageElements();
+
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+
+
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
+        
+        function removeHelmets() {
+            document.getElementById("toptext").innerText = "Remove helmets";
+            document.getElementById("textboxA").innerHTML = "<p> Enter the helmet ids you want to remove from the options, if you want to add multiple seperate them with commas </p> <p> Example:<br> 4, 5, 6, 9 </p>"
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("buttonA").style.display = "block";
+
+            fetchWithTimeout("/getHelmetList", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+                document.getElementById("textboxB").innerHTML = data.textbox
+
+                document.getElementById("textboxB").style.display = "block";
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+            document.getElementById("buttonA").onclick = removeHelmetsButton;
+        }
+        function removeHelmetsButton() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const helmetList = document.getElementById("input").value;
+
+
+            fetchWithTimeout("/removeHelmets", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode,  helmetList})
+            }).then(data =>{
+                overlay.style.display = "none";
+                hideAllPageElements();
+
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+
+
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
 
 
 

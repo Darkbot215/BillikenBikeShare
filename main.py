@@ -976,7 +976,7 @@ def forceCheckinBike():
                                siteResponse["Emails"]["Return"][1])
                 if email in user_list:
                     email_idx = user_list.index(email)
-                    driveCheckin(user_list[email_idx], email_idx, int(row[0]), idx, -1, "")
+                    driveCheckin(user_values[email_idx], email_idx, int(row[0]), idx, -1, "")
                 else:
                     driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
 
@@ -1205,7 +1205,84 @@ def addBikeToSystem():
         "textbox": "This bike has been added to the system and the randomly assigned lock code is <b> "+str(random_lock_code)+"</b>"
     })
 
+@app.route("/getHelmetList", methods = ["POST"])
+def getHelmetList():
+    return jsonify({
+        "textbox": "The current helmets listed in the system are: <br>"+str(osSettings["helmets"])
+    })
 
+@app.route("/addHelmets", methods = ["POST"])
+def addHelmets():
+    data: object = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    helmets = data.get("helmetList", "")
+    print(helmets)
+    skips = []
+    if len(helmets) > 0:
+        new_helmets = sorted(int(x.strip()) for x in helmets.split(","))
+    else:
+        return error("no helmets were entered in the box to be added")
+    new_helmets.extend( osSettings["helmets"])
+    new_helmets.sort()
+    new_helmets = list(dict.fromkeys(new_helmets))
+    osSettings["helmets"] = new_helmets
+
+    target = "osSettings!B1"
+    body = {
+        'values': [new_helmets]
+    }
+    sheet = get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+
+    return jsonify({
+        "topText": "Helmets have been added",
+        "textbox": "The new helmet list is <br>"+str(new_helmets)
+    })
+
+@app.route("/removeHelmets", methods = ["POST"])
+def removeHelmets():
+    data: object = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    helmets = data.get("helmetList", "")
+    print(helmets)
+    skip_helmets = []
+    if len(helmets) > 0:
+        skip_helmets = sorted(int(x.strip()) for x in helmets.split(","))
+    else:
+        return error("no helmets were entered in the box to be removed")
+    new_helmets = []
+    removed_count = 0
+    for helm in osSettings["helmets"]:
+        if helm not in skip_helmets:
+            new_helmets.append(helm)
+        else:
+            removed_count+=1
+
+    new_helmets.sort()
+    new_helmets = list(dict.fromkeys(new_helmets))
+    osSettings["helmets"] = new_helmets
+    sheets_new_helmets = new_helmets + ([""] *removed_count)
+    target = "osSettings!B1"
+    body = {
+        'values': [sheets_new_helmets]
+    }
+    sheet = get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+
+    return jsonify({
+        "topText": "Helmets have been removed",
+        "textbox": "The new helmet list is <br>"+str(new_helmets)
+    })
 
 
 def error(message, status=400):
