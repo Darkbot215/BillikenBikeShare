@@ -494,9 +494,9 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ loginCode })
             }).then(data =>{
-                listOfOptions = ["Get All Bike Lock Codes","Set New Bike Lock Codes", "Add New User Without Verification","Add Paid User to System",
+                listOfOptions = ["Get All Bike Lock Codes","Set New Bike Lock Codes","Show Last Bike Users", "Add New User Without Verification","Add Paid User to System",
                 "Remove Paid Users", "Give a User a Time Extension", "Force Check-in Bike", "Check-out bikes (for rides ect.)",
-                "Set New Bike Status", "Remove Bike From System", "Add Bike To System", "Add Helmets", "Remove Helmets"]
+                "Set New Bike Status", "Remove Bike From System", "Add Bike To System", "Add Helmets", "Remove Helmets", "Reload Site Settings"]
 
 
                 fillDropdown(listOfOptions);
@@ -538,6 +538,7 @@
                 "Get All Bike Lock Codes": getAllBikeLockCodes,
                 "Set New Bike Lock Codes": setNewBikeLockCodes,
                 "Add New User Without Verification": addNewUserWithoutVerification,
+                "Show Last Bike Users": lastBikeUsers,
                 "Add Paid User to System": addPaidUser,
                 "Remove Paid Users": removePaidUsers,
                 "Give a User a Time Extension": giveTimeExtension,
@@ -547,7 +548,8 @@
                 "Remove Bike From System": removeBikeFromSystem,
                 "Add Bike To System": addBikeToSystem,
                 "Add Helmets": addHelmets,
-                "Remove Helmets": removeHelmets
+                "Remove Helmets": removeHelmets,
+                "Reload Site Settings": reloadSiteSettings,
             };
             hideAllPageElements();
             const action = adminActions[selectedText];
@@ -1311,9 +1313,67 @@
             });
         }
 
+        function lastBikeUsers() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
 
 
-        
+            fetchWithTimeout("/lastBikeUsers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = "Bike Last Users Page";
+                const rows = data.bike_list.map(b => ([
+                { value: b.id },
+                { value: b.status, color: b.color },
+                { value: b.user, color: b.user_color}
+                ]));
+
+                buildTable({
+                tableId: "bikeTable",
+                headingText: `Status at: ${data.time}`,
+                headers: ["Bike #", "Status", "Last/Current User"],
+                rows
+                });
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+                document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+
+        }
+
+        function reloadSiteSettings() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+
+
+            fetchWithTimeout("/reloadSiteSettings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                document.getElementById("toptext").innerText = "Success at reloading site settings";
+                document.getElementById("textboxA").innerText = "The site has updated with the new OS settings";
+
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR with login: ${err.message}`;
+                console.error(err);
+            });
+        }
+
         let loginCode = null;
 
         window.onload = populatePage;

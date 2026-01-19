@@ -1284,6 +1284,70 @@ def removeHelmets():
         "textbox": "The new helmet list is <br>"+str(new_helmets)
     })
 
+@app.route("/lastBikeUsers", methods = ["POST"])
+def lastBikeUsers():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    RANGE_NAME = "Simple Bike Summary!A2:B"
+
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", [])
+    bike_list = [str(row[0]) for row in values]
+    ranges = []
+    for bikeid in bike_list:
+        ranges.append("Bike"+bikeid+"!B2")
+
+    sheet = get_sheets_service().spreadsheets()
+    # The single batch call
+    requests = sheet.values().batchGet(
+        spreadsheetId=SPREADSHEET_ID,
+        ranges=ranges
+    )
+    response = requests.execute()
+
+    value_ranges = response.get('valueRanges', [])
+
+    now = now_local()
+    current_time = now.strftime("%I:%M %p")
+    bikelist = []
+    for idx, row in enumerate(values):
+        if row[1] == "Checked-in":
+            output_color = "#88E788"
+            user_color = "#33B5E5"
+        elif row[1] == "Checked-out":
+            output_color = "#FF7F7F"
+            user_color = "#FFD300"
+        else:
+            output_color = "#FFAC1C"
+            user_color = "#33B5E5"
+        last_user = value_ranges[idx].get('values', [])
+
+        bikelist.append({"id": row[0], "status": row[1], "color": output_color, "user": last_user, "user_color": user_color})
+    print(bikelist)
+    return jsonify({
+        "time": current_time,
+        "bike_list": bikelist,
+    })
+
+@app.route("/reloadSiteSettings", methods = ["POST"])
+def reloadSiteSettings():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    load_settings()
+    return jsonify({
+        "topText": "Success at reloading site settings",
+        "textbox": "The site has updated with the new OS settings"
+    })
 
 def error(message, status=400):
     return jsonify({"error": message}), status

@@ -265,6 +265,7 @@ def main():
 
     markForDelete = []
     values = result.get("values", "")
+    requests = []
     for row_idx, row in enumerate(values, start=1):
         # checks if user failed to be verified and cleans it up
         answer = verificationInFuture(row)
@@ -275,23 +276,38 @@ def main():
         answer = duesExpired(row)
         if answer:
             print("here")
-            RANGE_TO_CLEAR = "UserLog!D" + str(row_idx + 1)
-            sheet = get_sheets_service().spreadsheets()
-            sheet.values().clear(
-                spreadsheetId=SPREADSHEET_ID,
-                range=RANGE_TO_CLEAR,
-                body={}).execute()
+            requests.append({
+                "updateCells": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["UserLog"],
+                        "startRowIndex": row_idx,
+                        "endRowIndex": row_idx + 1,
+                        "startColumnIndex": 3,
+                        "endColumnIndex": 4
+                    },
+                    "rows": [{"values": [{"userEnteredValue": {"stringValue": ""}}]}],
+                    "fields": "userEnteredValue"
+                }
+            })
             row[3] = ""
         # Checks if dues are longer than experiation date, then sets experiation date
         answer, new_date = experationUpdate(row)
         if answer:
             target = "UserLog!C" + str(row_idx + 1)
             expo_day = new_date.strftime("%m/%d/%Y")
-            body = {'values': [[expo_day]]}
-            sheet = get_sheets_service().spreadsheets()
-            sheet.values().update(
-                spreadsheetId=SPREADSHEET_ID, range=target,
-                valueInputOption="USER_ENTERED", body=body).execute()
+            requests.append({
+                "updateCells": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["UserLog"],
+                        "startRowIndex": row_idx,
+                        "endRowIndex": row_idx + 1,
+                        "startColumnIndex": 2,
+                        "endColumnIndex": 3
+                    },
+                    "rows": [{"values": [{"userEnteredValue": {"stringValue": expo_day}}]}],
+                    "fields": "userEnteredValue"
+                }
+            })
             row[2] = expo_day
         # Checks if the user has expired
         answer = userExpired(row)
@@ -301,22 +317,63 @@ def main():
         # Checks if the user owes dues
         if row[3] == "" and int(row[1]) >= 1:
             hold = holdUpdate(row[4], holdToAdd="P")
-            target = "UserLog!E" + str(row_idx + 1)
-            body = {'values': [[hold]]}
-            sheet = get_sheets_service().spreadsheets()
-            sheet.values().update(
-                spreadsheetId=SPREADSHEET_ID, range=target,
-                valueInputOption="USER_ENTERED", body=body).execute()
+            requests.append({
+                "updateCells": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["UserLog"],
+                        "startRowIndex": row_idx,
+                        "endRowIndex": row_idx + 1,
+                        "startColumnIndex": 4,
+                        "endColumnIndex": 5
+                    },
+                    "rows": [{"values": [{"userEnteredValue": {"stringValue": hold}}]}],
+                    "fields": "userEnteredValue"
+                }
+            })
             row[4] = hold
         if "#" in row[4] and "P" in row[4] and row[3] != "":
             hold = holdUpdate(row[4], holdToRemove="P")
-            target = "UserLog!E" + str(row_idx + 1)
-            body = {'values': [[hold]]}
-            sheet = get_sheets_service().spreadsheets()
-            sheet.values().update(
-                spreadsheetId=SPREADSHEET_ID, range=target,
-                valueInputOption="USER_ENTERED", body=body).execute()
+            requests.append({
+                "updateCells": {
+                    "range": {
+                        "sheetId": bike_sheet_dict["UserLog"],
+                        "startRowIndex": row_idx,
+                        "endRowIndex": row_idx + 1,
+                        "startColumnIndex": 4,
+                        "endColumnIndex": 5
+                    },
+                    "rows": [{"values": [{"userEnteredValue": {"stringValue": hold}}]}],
+                    "fields": "userEnteredValue"
+                }
+            })
             row[4] = hold
+        if "#" in row[4]:
+            cleaned_hold = holdUpdate(row[4])
+            if cleaned_hold != row[4]:
+                requests.append({
+                    "updateCells": {
+                        "range": {
+                            "sheetId": bike_sheet_dict["UserLog"],
+                            "startRowIndex": row_idx,
+                            "endRowIndex": row_idx + 1,
+                            "startColumnIndex": 4,
+                            "endColumnIndex": 5
+                        },
+                        "rows": [{
+                            "values": [
+                                {"userEnteredValue": {"stringValue": cleaned_hold}}
+                            ]
+                        }],
+                        "fields": "userEnteredValue"
+                    }
+                })
+                row[4] = cleaned_hold
+    if requests:
+        get_sheets_service().spreadsheets().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={"requests": requests}
+        ).execute()
+
     deleteUsers(markForDelete, SPREADSHEET_ID, bike_sheet_dict)
 
 if __name__ == "__main__":
