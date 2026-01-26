@@ -32,5 +32,6 @@ jobs:
           EMAIL_REFRESH_TOKEN: ${{ secrets.EMAIL_REFRESH_TOKEN }}
           EMAIL_CLIENT_ID: ${{ secrets.EMAIL_CLIENT_ID }}
           EMAIL_CLIENT_SECRET: ${{ secrets.EMAIL_CLIENT_SECRET }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
         run: |
           python UserPageUpdate.py

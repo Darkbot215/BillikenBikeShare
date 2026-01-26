@@ -390,7 +390,7 @@
             table.appendChild(tbody);
         }
 
-        function fetchWithTimeout(url, options = {}, timeout = 10000) {
+        function fetchWithTimeout(url, options = {}, timeout = 20000) {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), timeout);
 

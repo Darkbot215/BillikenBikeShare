@@ -241,8 +241,9 @@ def send_gmail(service,to,subject,html_contents,attachments=None):
     ).execute()
 
 
+
 def main():
-    SPREADSHEET_ID = "1o-r-D--evfEa3iHuViri5V3fb33a7iv_Op4IspKnO-0"
+    SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
     load_settings(SPREADSHEET_ID)
 
     spreadsheet = get_sheets_service().spreadsheets().get(

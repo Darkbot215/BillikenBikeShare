@@ -52,8 +52,8 @@ def get_gmail_service():
 # ------------------------------------
 # GOOGLE DRIVE CLIENT
 # ------------------------------------
+SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
-SPREADSHEET_ID = "1o-r-D--evfEa3iHuViri5V3fb33a7iv_Op4IspKnO-0"
 
 app = Flask(__name__)
 CORS(app)  # allows your HTML file to communicate with the server
@@ -458,7 +458,7 @@ def verifyUser():
 
             return jsonify({
                 "topText": siteResponse["VerifyUser"]["Success"][0],
-                "textbox": siteResponse["VerifyUser"]["Success"][1]
+                "textbox": siteResponse["VerifyUser"]["Success"][1] +"<a href=\"/\">Billiken Bikeshare Homepage </a>"
             })
         else:
             return jsonify({

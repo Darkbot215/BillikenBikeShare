@@ -244,7 +244,7 @@ def deleteUsers(email_idxs, SPREADSHEET_ID, bike_sheet_dict):
         ).execute()
 def main():
 
-    SPREADSHEET_ID = "1o-r-D--evfEa3iHuViri5V3fb33a7iv_Op4IspKnO-0"
+    SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
     spreadsheet = get_sheets_service().spreadsheets().get(
         spreadsheetId=SPREADSHEET_ID
