@@ -441,12 +441,13 @@
             const overlay = document.getElementById("overlaySpinner");
 
             overlay.style.display = "none";
+            email = decodeURIComponent(email || "");
 
 
             document.getElementById("toptext").innerText = `Email Verification Page`;
             document.getElementById("textboxA").innerText = "Enter SLU Email:";
             document.getElementById("input").style.display = "block";
-            document.getElementById("input").value = email || "";
+            document.getElementById("input").value = email;
             
             document.getElementById("textboxB").innerText = "Enter Verification Code:";
             document.getElementById("inputB").style.display = "block";

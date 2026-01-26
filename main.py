@@ -16,6 +16,10 @@ from random import randint
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 from email_validator import validate_email, EmailNotValidError
+from urllib.parse import quote
+
+
+
 
 
 #Set up google drive:
@@ -1401,9 +1405,9 @@ def addUser(email, send_email = True):
         spreadsheetId=SPREADSHEET_ID,
         body={'requests': [requests]}
     ).execute()
-
+    safe_email = quote(email)
     message_body = ( siteResponse["Emails"]["Verification"][1]+
-            "<a href=" + osSettings["PageUrl"]+"/?email=" + email + "&code=" + str(verification_code) + ">Verify by clicking here </a>"
+            "<a href=" + osSettings["PageUrl"]+"/?email=" + safe_email + "&code=" + str(verification_code) + ">Verify by clicking here </a>"
                      + siteResponse["Emails"]["Verification"][2]+ "<a href="+osSettings["PageUrl"]+"/?vp=1>"+osSettings["PageUrl"]+"/?vp=1 </a>"
     )
     if send_email:
