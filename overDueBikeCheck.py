@@ -27,6 +27,8 @@ SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 load_dotenv("passwords.env")
+SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
+
 
 def get_credentials():
     service_account_info = json.loads(base64.b64decode(os.environ["GOOGLE_CREDS_BASE64"]))
