@@ -391,6 +391,15 @@ def verifyUser():
             "textbox": services.siteResponse["VerifyUser"]["TooSlow"][1]
         })
 
+@app.route("/bikeQRcode", methods=["POST"])
+def bikeQRcode():
+    data = request.get_json()
+    qrCode = data.get("QRcodeBike", "")
+    if qrCode in services.qr_codes_to_bike_id:
+        return jsonify({
+            "bikeid": services.qr_codes_to_bike_id[qrCode]
+        })
+    return error("There has been an error in the code. This QR code does not match up to any bike in the system")
 
 #Admin controls
 @app.route("/adminLogin",methods=["POST"])

@@ -321,18 +321,24 @@
             const email = urlParams.get("email") ? decodeURIComponent(urlParams.get("email")) : "";
             const vp = urlParams.get("vp");
             const nc = urlParams.get("nc");
+            const QRcodeBike = urlParams.get("QRcodeBike")
 
             const overlay = document.getElementById("overlaySpinner");
             overlay.style.display = "flex";
             if(vp || email || verificationCode){
-                verificationPage(email,verificationCode) //THIS IS WHERE YOU ARE WORKING
+                verificationPage(email,verificationCode) 
             }
             else if (nc){
                 newCodePage()
             }
+            
             else if(bike) {
                 bikeSpecificPage(bike)
-            } else{
+            } 
+            else if(QRcodeBike){
+                bikeQRcodePage(QRcodeBike)
+            }
+            else{
                 bikeTablePage()
                 
             }
@@ -353,6 +359,35 @@
             document.getElementById("buttonB").onclick = () => submitVerify(1);
 
             
+        }
+
+        function bikeQRcodePage(QRcodeBike) 
+        {
+            const overlay = document.getElementById("overlaySpinner");
+
+
+            document.getElementById("toptext").innerText = `Billiken Bike`;
+            document.getElementById("textboxA").innerText = "Loading..."
+            fetchWithTimeout("/bikeQRcode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ QRcodeBike })
+            }).then(data =>{
+                overlay.style.display = "none";
+
+                const bikeId = data.bikeid;
+                const url = new URL(window.location);
+                url.search = "";           // clears everything after ?
+                url.searchParams.set("bike", bikeId);
+                history.pushState(null, "", url);  // changes URL in browser bar only
+                overlay.style.display = "flex";
+                bikeSpecificPage(bikeId);          // call your function manually
+
+            }).catch(err => {
+                overlay.style.display = "none";
+                document.getElementById("textboxA").innerText = `ERROR: ${err.message}`;
+                console.error(err);
+            });
         }
 
         function bikeSpecificPage(bike)

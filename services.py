@@ -69,6 +69,7 @@ def now_local():
 siteResponse = {}
 osSettings = {}
 bike_sheet_dict = {}
+qr_codes_to_bike_id = {}
 def load_settings():
     bike_sheet_dict.clear()
     spreadsheet = get_sheets_service().spreadsheets().get(
@@ -98,6 +99,21 @@ def load_settings():
             siteResponse[currentDic].setdefault(row[1], [])
             for cell in row[2:]:
                 siteResponse[currentDic][row[1]].append(cell)
+
+    qr_codes_to_bike_id.clear()
+    RANGE_NAME = "BikeWebpageIDs!A2:B"
+    sheet = get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+
+    values = result.get("values", [])
+
+    for row in values:
+        if len(row) > 1:
+            qr_codes_to_bike_id[row[0]] = int(row[1])
+
     #This is for the OS settings page, this is a bit less automatic and more manual
     osSettings.clear()
     RANGE_NAME = "osSettings"
