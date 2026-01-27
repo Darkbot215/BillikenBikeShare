@@ -35,7 +35,7 @@ CORS(app)  # allows your HTML file to communicate with the server
 services.load_settings()
 
 
-admin_code = [3, services.now_local()+timedelta(2)]
+admin_code = [None, None]
 
 @app.route("/table", methods=["GET"])
 def bike_table():
