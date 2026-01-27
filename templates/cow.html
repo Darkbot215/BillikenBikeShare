@@ -373,20 +373,19 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ QRcodeBike })
             }).then(data =>{
-                overlay.style.display = "none";
 
                 const bikeId = data.bikeid;
                 const url = new URL(window.location);
                 url.search = "";           // clears everything after ?
                 url.searchParams.set("bike", bikeId);
                 history.pushState(null, "", url);  // changes URL in browser bar only
-                overlay.style.display = "flex";
                 bikeSpecificPage(bikeId);          // call your function manually
 
             }).catch(err => {
-                overlay.style.display = "none";
-                document.getElementById("textboxA").innerText = `ERROR: ${err.message}`;
-                console.error(err);
+                const url = new URL(window.location);
+                url.search = "";           // clears everything after ?
+                history.pushState(null, "", url);  // changes URL in browser bar only
+                bikeTablePage();          // call your function manually
             });
         }
 
