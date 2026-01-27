@@ -91,7 +91,7 @@ def bike_status():
         return (jsonify({
             "status": 2,
             "statusText": services.siteResponse["InitialPage"]["NotFound"][0],
-            "text1": services.siteResponse["InitialPage"]["NotFound"][0]
+            "text1": services.siteResponse["InitialPage"]["NotFound"][1]
         }))
 
 
