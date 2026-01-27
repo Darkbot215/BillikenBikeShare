@@ -16,67 +16,18 @@ from email import encoders
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
-
-#Main things to be done:
-#Check if user has failed to verify by verification time
-#Check if their dues have expired (need to be smart in checking text)
-#Check if user has checked out at least one bike and not paid dues
-#Check if dues is longer than expiration, and then update that
-#Check if user has expired.
-
-SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
+import services
 
 load_dotenv("passwords.env")
 SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
+services.load_settings()
 
-def get_credentials():
-    service_account_info = json.loads(base64.b64decode(os.environ["GOOGLE_CREDS_BASE64"]))
-    all_scopes = list(set(DRIVE_SCOPES + SHEETS_SCOPES))
-    drive_creds = service_account.Credentials.from_service_account_info(
-        service_account_info,
-        scopes=all_scopes
-    )
-    gmail_creds = Credentials(
-        token=None,
-        refresh_token= os.environ["EMAIL_REFRESH_TOKEN"],
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=os.environ["EMAIL_CLIENT_ID"],
-        client_secret=os.environ["EMAIL_CLIENT_SECRET"],
-        scopes=["https://www.googleapis.com/auth/gmail.send"],
-    )
-    return {"drive":drive_creds,"gmail":gmail_creds}
-
-creds = get_credentials()
-
-
-def get_sheets_service():
-    return build("sheets", "v4", credentials=creds["drive"])
-def get_gmail_service():
-    return build("gmail", "v1", credentials=creds["gmail"])
-
-LOCAL_TZ = ZoneInfo("America/Chicago")
-
-def now_local():
-    return datetime.now(LOCAL_TZ)
-
-def timeExtractor(time):
-    date_indices = [i for i, x in enumerate(time) if x == ('/')]
-    time_indices = [i for i, x in enumerate(time) if x == (':')]
-    year = int(time[date_indices[1] + 1:date_indices[1] + 5])
-    month = int(time[0:date_indices[0]])
-    day = int(time[date_indices[0] + 1:date_indices[1]])
-    hour = int(time[time_indices[0] - 2:time_indices[0]])
-    minute = int(time[time_indices[0] + 1:time_indices[1]])
-    second = int(time[time_indices[1] + 1:time_indices[1] + 3])
-    temp = datetime(year, month, day, hour, minute, second, tzinfo=LOCAL_TZ)
-    return temp
 
 def verificationInFuture(user_info):
     if len(user_info) == 7:
-        temp = timeExtractor(user_info[6])
-        now = now_local()
+        temp = services.timeExtractor(user_info[6])
+        now = services.now_local()
         if now > temp:
             return False
     return True
@@ -99,7 +50,7 @@ def dateExtractor(date):
     if year < 2000:
         year = year + 2000
     try:
-        temp = datetime(year, month, day, tzinfo=LOCAL_TZ)
+        temp = datetime(year, month, day, tzinfo=services.LOCAL_TZ)
         return temp.date()
     except:
         return None
@@ -114,7 +65,7 @@ def duesExpired(user_info):
     if temp is None:
         print(f"Error: Could not extract date from {raw_date}")
         return False  # If we can't read it, we assume NOT expired (or handle error)
-    now = now_local().date()
+    now = services.now_local().date()
     if now > temp:
         #date has passed
         return True
@@ -133,9 +84,9 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
             options = ["T", "R"]
             for letter in options:
                 if letter in code:
-                    now = now_local()
+                    now = services.now_local()
                     hold_time = currentHold[7:]
-                    temp = timeExtractor(hold_time)
+                    temp = services.timeExtractor(hold_time)
                     if temp > now: #This tells it not to change the time
                         codeDict.update({letter: temp})
             options = ["L", "P"]
@@ -155,7 +106,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
     for item in holdToAdd:
         if item in codeDict.keys():
             if item == "R": #currently 'recently' counts as 30 minutes and so does temp ban
-                now = now_local()
+                now = services.now_local()
                 T_time = now + timedelta(minutes=tempBanTime)
                 codeDict.update({"T": T_time})
                 del codeDict["R"]
@@ -163,7 +114,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = 30)
                 codeDict[item] = codeDict[item] + 1
         else:
             if item == "T" or item == "R":
-                now = now_local()
+                now = services.now_local()
                 T_time = now + timedelta(minutes=tempBanTime)
                 codeDict.update({item: T_time})
             else:
@@ -218,7 +169,7 @@ def userExpired(user_info):
     if expo is None:
         print(f"Error: Could not extract date from {raw_date}")
         return False  # If we can't read it, we assume NOT expired (or handle error)
-    now = now_local()
+    now = services.now_local()
     if now.date() > expo:
         return True
     return False
@@ -239,7 +190,7 @@ def deleteUsers(email_idxs, SPREADSHEET_ID, bike_sheet_dict):
                     }
                 }
             })
-        sheet_service = get_sheets_service().spreadsheets()
+        sheet_service = services.get_sheets_service().spreadsheets()
         sheet_service.batchUpdate(
             spreadsheetId=SPREADSHEET_ID,
             body={'requests': requests}
@@ -247,7 +198,7 @@ def deleteUsers(email_idxs, SPREADSHEET_ID, bike_sheet_dict):
 def main():
 
 
-    spreadsheet = get_sheets_service().spreadsheets().get(
+    spreadsheet = services.get_sheets_service().spreadsheets().get(
         spreadsheetId=SPREADSHEET_ID
     ).execute()
     bike_sheet_dict = {}
@@ -258,7 +209,7 @@ def main():
 
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -317,7 +268,7 @@ def main():
             continue
         # Checks if the user owes dues
         if row[3] == "" and int(row[1]) >= 1:
-            hold = holdUpdate(row[4], holdToAdd="P")
+            hold = holdUpdate(row[4], holdToAdd="P", tempBanTime = services.osSettings["tempTimeout"])
             requests.append({
                 "updateCells": {
                     "range": {
@@ -333,7 +284,7 @@ def main():
             })
             row[4] = hold
         if "#" in row[4] and "P" in row[4] and row[3] != "":
-            hold = holdUpdate(row[4], holdToRemove="P")
+            hold = holdUpdate(row[4], holdToRemove="P", tempBanTime = services.osSettings["tempTimeout"])
             requests.append({
                 "updateCells": {
                     "range": {
@@ -349,7 +300,7 @@ def main():
             })
             row[4] = hold
         if "#" in row[4]:
-            cleaned_hold = holdUpdate(row[4])
+            cleaned_hold = holdUpdate(row[4], tempBanTime = services.osSettings["tempTimeout"])
             if cleaned_hold != row[4]:
                 requests.append({
                     "updateCells": {
@@ -370,7 +321,7 @@ def main():
                 })
                 row[4] = cleaned_hold
     if requests:
-        get_sheets_service().spreadsheets().batchUpdate(
+        services.get_sheets_service().spreadsheets().batchUpdate(
             spreadsheetId=SPREADSHEET_ID,
             body={"requests": requests}
         ).execute()

@@ -17,45 +17,13 @@ from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
 from email_validator import validate_email, EmailNotValidError
 from urllib.parse import quote
+import services
 
 
-
-
-
-#Set up google drive:
-DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive"]
-SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 load_dotenv("passwords.env")
 
-def get_credentials():
-    service_account_info = json.loads(base64.b64decode(os.environ["GOOGLE_CREDS_BASE64"]))
-    all_scopes = list(set(DRIVE_SCOPES + SHEETS_SCOPES))
-    drive_creds = service_account.Credentials.from_service_account_info(
-        service_account_info,
-        scopes=all_scopes
-    )
-    gmail_creds = Credentials(
-        token=None,
-        refresh_token= os.environ["EMAIL_REFRESH_TOKEN"],
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=os.environ["EMAIL_CLIENT_ID"],
-        client_secret=os.environ["EMAIL_CLIENT_SECRET"],
-        scopes=["https://www.googleapis.com/auth/gmail.send"],
-    )
-    return {"drive":drive_creds,"gmail":gmail_creds}
 
-creds = get_credentials()
-
-def get_sheets_service():
-    return build("sheets", "v4", credentials=creds["drive"])
-def get_drive_service():
-    return build("drive", "v3", credentials=creds["drive"])
-def get_gmail_service():
-    return build("gmail", "v1", credentials=creds["gmail"])
-# ------------------------------------
-# GOOGLE DRIVE CLIENT
-# ------------------------------------
 SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
 
@@ -64,89 +32,22 @@ CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
 
 
-LOCAL_TZ = ZoneInfo("America/Chicago")
-
-def now_local():
-    return datetime.now(LOCAL_TZ)
+services.load_settings()
 
 
-
-siteResponse = {}
-osSettings = {}
-bike_sheet_dict = {}
-def load_settings():
-    bike_sheet_dict.clear()
-    spreadsheet = get_sheets_service().spreadsheets().get(
-        spreadsheetId=SPREADSHEET_ID
-    ).execute()
-    for sheet in spreadsheet["sheets"]:
-        props = sheet["properties"]
-        bike_sheet_dict.update({props["title"]: props["sheetId"]})
-        print(props["title"], props["sheetId"])
-    siteResponse.clear()
-    RANGE_NAME = "SiteResponseMessages!A1:E"
-
-    sheet = get_sheets_service().spreadsheets()
-    result = sheet.values().get(
-        spreadsheetId=SPREADSHEET_ID,
-        range=RANGE_NAME
-    ).execute()
-
-    values = result.get("values", [])
-    currentDic = ""
-
-    for row in values:
-        if row and row[0]:
-            currentDic = row[0]
-            siteResponse.setdefault(currentDic, {})
-        if currentDic and len(row) > 1:
-            siteResponse[currentDic].setdefault(row[1], [])
-            for cell in row[2:]:
-                siteResponse[currentDic][row[1]].append(cell)
-    #This is for the OS settings page, this is a bit less automatic and more manual
-    osSettings.clear()
-    RANGE_NAME = "osSettings"
-
-    sheet = get_sheets_service().spreadsheets()
-    result = sheet.values().get(
-        spreadsheetId=SPREADSHEET_ID,
-        range=RANGE_NAME
-    ).execute()
-
-    values = result.get("values", "")
-    osSettings["helmets"] = values[0][1:]
-    osSettings["helmets"] = [int(x) for x in osSettings["helmets"]]
-
-    print("helmets")
-    print(osSettings["helmets"])
-    osSettings["adminEmails"] = values[1][1:]
-    osSettings["adminLoginSafety"] = int(values[2][1]) == 1
-    osSettings["tempTimeout"] = int(values[3][1])
-    osSettings["checkOutLength"] = int(values[4][1])
-    osSettings["TempBan"] = int(values[5][1]) == 1
-    osSettings["EmailChecking"] = int(values[6][1]) == 1
-    osSettings["MaxBikes"] = int(values[7][1])
-    osSettings["PageUrl"] = values[8][1]
-    osSettings["blankResponses"] = values[9][1:]
-
-
-load_settings()
-print(osSettings)
-
-
-admin_code = [3, now_local()+timedelta(2)]
+admin_code = [3, services.now_local()+timedelta(2)]
 
 @app.route("/table", methods=["GET"])
 def bike_table():
     RANGE_NAME = "Simple Bike Summary!A2:B"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
     ).execute()
     values = result.get("values", [])
-    now = now_local()
+    now = services.now_local()
     current_time = now.strftime("%I:%M %p")
     bikelist = []
     for row in values:
@@ -160,8 +61,8 @@ def bike_table():
     return jsonify({
         "time": current_time,
         "bike_list": bikelist,
-        "topText": siteResponse["InitialPage"]["Table"][0],
-        "textbox": siteResponse["InitialPage"]["Table"][1]
+        "topText": services.siteResponse["InitialPage"]["Table"][0],
+        "textbox": services.siteResponse["InitialPage"]["Table"][1]
     })
 
 @app.route("/status", methods=["POST"])
@@ -170,7 +71,7 @@ def bike_status():
     bikeid = int(data.get("bikeid", ""))
     # Do something with the text:
     RANGE_NAME = "Simple Bike Summary!A2:B"
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -189,27 +90,27 @@ def bike_status():
         #That bike does not exist
         return (jsonify({
             "status": 2,
-            "statusText": siteResponse["InitialPage"]["NotFound"][0],
-            "text1": siteResponse["InitialPage"]["NotFound"][0]
+            "statusText": services.siteResponse["InitialPage"]["NotFound"][0],
+            "text1": services.siteResponse["InitialPage"]["NotFound"][0]
         }))
 
 
     if values[idx][1] == "Checked-in":
         return jsonify({
             "status": 0,
-            "text1": siteResponse["InitialPage"]["Checked-in"][1],
-            "helmetList": osSettings["helmets"]
+            "text1": services.siteResponse["InitialPage"]["Checked-in"][1],
+            "helmetList": services.osSettings["helmets"]
         })
     elif values[idx][1] == "Checked-out":
         return jsonify({
             "status":1,
-            "text1": siteResponse["InitialPage"]["Checked-out"][1],
-            "text2": siteResponse["InitialPage"]["Checked-out"][2],
-            "helmetList": osSettings["helmets"]
+            "text1": services.siteResponse["InitialPage"]["Checked-out"][1],
+            "text2": services.siteResponse["InitialPage"]["Checked-out"][2],
+            "helmetList": services.osSettings["helmets"]
         })
     else:
         RANGE_NAME = "Simple Bike Summary!D"+str(idx+2) #Plus 2 for the title row not read, and that excel starts at 1 not 0
-        sheet = get_sheets_service().spreadsheets()
+        sheet = services.get_sheets_service().spreadsheets()
         result = sheet.values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=RANGE_NAME
@@ -231,7 +132,7 @@ def checkOut():
     #Find if email is in list
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -249,14 +150,14 @@ def checkOut():
             print('this email is legit')
             addUser(email)
             return jsonify({
-        "topText": siteResponse["Check-out"]["FirstTime"][0],
-        "textbox": siteResponse["Check-out"]["FirstTime"][1]
+        "topText": services.siteResponse["Check-out"]["FirstTime"][0],
+        "textbox": services.siteResponse["Check-out"]["FirstTime"][1]
     })
 
         else:
             return jsonify({
-                "topText": siteResponse["Check-out"]["BadEmail"][0],
-                "textbox": siteResponse["Check-out"]["BadEmail"][1]
+                "topText": services.siteResponse["Check-out"]["BadEmail"][0],
+                "textbox": services.siteResponse["Check-out"]["BadEmail"][1]
             })
     #Now we are dealing with people in the user list! that is fun.
     #Main checks Are they verified, do they have a free ride - > have they paid ->
@@ -264,13 +165,13 @@ def checkOut():
     verification_time = user_info[6] if len(user_info) > 6 else None
     if verification_time:
         return jsonify({
-            "topText": siteResponse["Check-out"]["NotYetVerified"][0],
-            "textbox": siteResponse["Check-out"]["NotYetVerified"][1]
+            "topText": services.siteResponse["Check-out"]["NotYetVerified"][0],
+            "textbox": services.siteResponse["Check-out"]["NotYetVerified"][1]
         })
     hold_status = user_info[4]
     if user_info[3] == "" and int(user_info[1]) >= 2:
         pass
-        hold_status = holdUpdate(hold_status, holdToAdd = "P")
+        hold_status = services.holdUpdate(hold_status, holdToAdd = "P", tempBanTime = services.osSettings["tempTimeout"])
         #This is a scuffed dues based hold. A permanent one should be added
     hold, output = holdChecker(hold_status) #EDIT MAX AMOUNT OF BIKES CHECKED OUT
     if hold:
@@ -282,7 +183,7 @@ def checkOut():
     #Congrats, they are good to check out a bike. Now we doublecheck the bike is good to check out and then send code
     RANGE_NAME = "Simple Bike Summary!A2:E"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -296,22 +197,22 @@ def checkOut():
         bike_idx = bike_list.index(bike)
         if values[bike_idx][1] == "Checked-in": #shit, we made it, we can check out
             driveCheckout(user_info,email_idx,bike,bike_idx,helmet)
-            message_body = (siteResponse["Emails"]["Unlocking"][1] +" #"+str(values[bike_idx][0])+": "
+            message_body = (services.siteResponse["Emails"]["Unlocking"][1] +" #"+str(values[bike_idx][0])+": "
                     +str(values[bike_idx][2])+
-                    siteResponse["Emails"]["Unlocking"][2]
+                    services.siteResponse["Emails"]["Unlocking"][2]
             )
-            send_gmail(get_gmail_service(),email,siteResponse["Emails"]["Unlocking"][0] + str(values[bike_idx][2]),message_body)
+            services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["Unlocking"][0] + str(values[bike_idx][2]),message_body)
             return jsonify({
-                "topText": siteResponse["Check-out"]["Success"][0],
-                "textbox": siteResponse["Check-out"]["Success"][1]
+                "topText": services.siteResponse["Check-out"]["Success"][0],
+                "textbox": services.siteResponse["Check-out"]["Success"][1]
             })
         return jsonify({
-                "topText": siteResponse["Check-out"]["Fail"][0],
-                "textbox": siteResponse["Check-out"]["Fail"][1]
+                "topText": services.siteResponse["Check-out"]["Fail"][0],
+                "textbox": services.siteResponse["Check-out"]["Fail"][1]
         })
     return jsonify({
-        "topText": siteResponse["Check-out"]["Error14"][0],
-        "textbox": siteResponse["Check-out"]["Error14"][1]
+        "topText": services.siteResponse["Check-out"]["Error14"][0],
+        "textbox": services.siteResponse["Check-out"]["Error14"][1]
     })
 
 @app.route("/checkIn",methods=["POST"])
@@ -330,7 +231,7 @@ def checkin():
     #Email sluonthemove about failed check-in
     RANGE_NAME = "Simple Bike Summary!A2:E"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -341,8 +242,8 @@ def checkin():
         bike_idx = bike_list.index(bike)
     else:
         return jsonify({
-            "topText": siteResponse["Check-in"]["Error11"][0],
-            "textbox": siteResponse["Check-in"]["Error11"][1]
+            "topText": services.siteResponse["Check-in"]["Error11"][0],
+            "textbox": services.siteResponse["Check-in"]["Error11"][1]
         })
     email = values[bike_idx][-1] #This works fine because the range is limited.
 
@@ -350,7 +251,7 @@ def checkin():
     # Find if email is in list
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -364,8 +265,8 @@ def checkin():
     else:
         #The user who checked out the bike is not on the user list
         return jsonify({
-            "topText": siteResponse["Check-in"]["Error12"][0],
-            "textbox": siteResponse["Check-in"]["Error12"][1]
+            "topText": services.siteResponse["Check-in"]["Error12"][0],
+            "textbox": services.siteResponse["Check-in"]["Error12"][1]
         })
         #Also a shitty error
     user_list = values
@@ -388,8 +289,8 @@ def checkin():
     ).start()
 
     return jsonify({
-        "topText": siteResponse["Check-in"]["Success"][0],
-        "textbox": siteResponse["Check-in"]["Success"][1]
+        "topText": services.siteResponse["Check-in"]["Success"][0],
+        "textbox": services.siteResponse["Check-in"]["Success"][1]
     })
 
 
@@ -402,7 +303,7 @@ def verifyUser():
     newCode = data.get("newCode",[])
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -414,24 +315,24 @@ def verifyUser():
         email_idx = user_list.index(email)
     else:
         return jsonify({
-        "topText": siteResponse["VerifyUser"]["NotInSystem"][0],
-        "textbox": siteResponse["VerifyUser"]["NotInSystem"][1]
+        "topText": services.siteResponse["VerifyUser"]["NotInSystem"][0],
+        "textbox": services.siteResponse["VerifyUser"]["NotInSystem"][1]
     })
     user_info = values[email_idx]
-    now = now_local()
+    now = services.now_local()
     try:
         ver_time = user_info[6]
     except:
         return jsonify({
-        "topText": siteResponse["VerifyUser"]["AlreadyDone"][0],
-        "textbox": siteResponse["VerifyUser"]["AlreadyDone"][1]
+        "topText": services.siteResponse["VerifyUser"]["AlreadyDone"][0],
+        "textbox": services.siteResponse["VerifyUser"]["AlreadyDone"][1]
     })
     print(newCode)
     if newCode:
         requests = [{
             "deleteDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "dimension": "ROWS",
                     "startIndex": email_idx + 1,
                     "endIndex": email_idx + 2
@@ -444,11 +345,11 @@ def verifyUser():
         ).execute()
         addUser(email)
         return jsonify({
-            "topText": siteResponse["VerifyUser"]["NewCode"][0],
-            "textbox": siteResponse["VerifyUser"]["NewCode"][1]
+            "topText": services.siteResponse["VerifyUser"]["NewCode"][0],
+            "textbox": services.siteResponse["VerifyUser"]["NewCode"][1]
         })
 
-    temp = timeExtractor(ver_time)
+    temp = services.timeExtractor(ver_time)
 
     if temp >= now:
         #We are within time.
@@ -461,19 +362,19 @@ def verifyUser():
             ).execute()
 
             return jsonify({
-                "topText": siteResponse["VerifyUser"]["Success"][0],
-                "textbox": siteResponse["VerifyUser"]["Success"][1] +"<a href=\"/\">Billiken Bikeshare Homepage </a>"
+                "topText": services.siteResponse["VerifyUser"]["Success"][0],
+                "textbox": services.siteResponse["VerifyUser"]["Success"][1] +"<a href=\"/\">Billiken Bikeshare Homepage </a>"
             })
         else:
             return jsonify({
-                "topText": siteResponse["VerifyUser"]["Wrong"][0],
-                "textbox": siteResponse["VerifyUser"]["Wrong"][1]
+                "topText": services.siteResponse["VerifyUser"]["Wrong"][0],
+                "textbox": services.siteResponse["VerifyUser"]["Wrong"][1]
             })
     else:
         requests = [{
             "deleteDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "dimension": "ROWS",
                     "startIndex": email_idx+1,
                     "endIndex": email_idx+2
@@ -486,8 +387,8 @@ def verifyUser():
         ).execute()
         addUser(email)
         return jsonify({
-            "topText": siteResponse["VerifyUser"]["TooSlow"][0],
-            "textbox": siteResponse["VerifyUser"]["TooSlow"][1]
+            "topText": services.siteResponse["VerifyUser"]["TooSlow"][0],
+            "textbox": services.siteResponse["VerifyUser"]["TooSlow"][1]
         })
 
 
@@ -498,11 +399,11 @@ def adminLogin(local_use = False, passCode= None):
     if local_use == False:
         data = request.get_json()
         passCode = int(data.get("loginCode", ""))
-    if osSettings["adminLoginSafety"]:
-        email = osSettings["adminEmails"][0]
+    if services.osSettings["adminLoginSafety"]:
+        email = services.osSettings["adminEmails"][0]
         RANGE_NAME = "UserLog!A2:G"
 
-        sheet = get_sheets_service().spreadsheets()
+        sheet = services.get_sheets_service().spreadsheets()
         result = sheet.values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=RANGE_NAME
@@ -514,15 +415,24 @@ def adminLogin(local_use = False, passCode= None):
             email_idx = user_list.index(email)
         else:
             return False
-        if len(values(email_idx)) >= 7:
-            admin_code = [values[5],timeExtractor([6])]
+        row = values[email_idx]
+
+
+        if len(row) >= 7:
+            admin_code = [
+                int(row[5]),
+                services.timeExtractor(row[6])
+            ]
         else:
-            admin_code = [values[5],now_local()-timedelta(minutes=1)]
+            admin_code = [
+                int(row[5]),
+                services.now_local() - timedelta(minutes=1)
+            ]
     if admin_code[0] == None or admin_code[1] == None:
         if local_use:
             return False, "This code has expired. Get a new one"
         return error("This code has expired. Get a new one",401)
-    if admin_code[1] < now_local():
+    if admin_code[1] < services.now_local():
         if local_use:
             return False, "This code has expired. Get a new one"
         return error("This code has expired. Get a new one",401)
@@ -544,13 +454,13 @@ def adminLogin(local_use = False, passCode= None):
 @app.route("/generateAdminCode",methods=["GET"])
 def generateAdminCode():
     global admin_code
-    admin_code = [randint(10000000, 99999999), now_local() + timedelta(minutes=15)]
-    email = osSettings["adminEmails"][0]
+    admin_code = [randint(10000000, 99999999), services.now_local() + timedelta(minutes=15)]
+    email = services.osSettings["adminEmails"][0]
 
-    if osSettings["adminLoginSafety"]:
+    if services.osSettings["adminLoginSafety"]:
         RANGE_NAME = "UserLog!A2:G"
 
-        sheet = get_sheets_service().spreadsheets()
+        sheet = services.get_sheets_service().spreadsheets()
         result = sheet.values().get(
             spreadsheetId=SPREADSHEET_ID,
             range=RANGE_NAME
@@ -564,12 +474,12 @@ def generateAdminCode():
             return False
         target = "UserLog!F" + str(email_idx + 1)+":G"+str(email_idx+1)
         body = {'values': [[admin_code[0],admin_code[1].strftime("%m/%d/%Y %H:%M:%S")]]}
-        sheet = get_sheets_service().spreadsheets()
+        sheet = services.get_sheets_service().spreadsheets()
         sheet.values().update(
             spreadsheetId=SPREADSHEET_ID, range=target,
             valueInputOption="USER_ENTERED", body=body).execute()
-    full_url = osSettings["PageUrl"]+"/admin?AdminPass="+str(admin_code[0])
-    send_gmail(get_gmail_service(),email, "Admin temp code: "+str(admin_code[0]),"<p> For 15 minutes of access the new admin code is: "+str(admin_code[0])
+    full_url = services.osSettings["PageUrl"]+"/admin?AdminPass="+str(admin_code[0])
+    services.send_gmail(services.get_gmail_service(),email, "Admin temp code: "+str(admin_code[0]),"<p> For 15 minutes of access the new admin code is: "+str(admin_code[0])
                + "</p> For even easier access use this link: <br> <a href="+full_url+">"+full_url+"</a>")
 
     return jsonify({
@@ -586,13 +496,13 @@ def allLockCodes():
         return error(errormessage)
     RANGE_NAME = "Simple Bike Summary!A2:C"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
     ).execute()
     values = result.get("values", [])
-    now = now_local()
+    now = services.now_local()
     current_time = now.strftime("%I:%M %p")
     bikelist = []
     for row in values:
@@ -622,7 +532,7 @@ def generateLockCodes():
         skips = sorted(int(x.strip()) for x in bike_ids.split(","))
     RANGE_NAME = "Simple Bike Summary!A2:C"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -640,13 +550,13 @@ def generateLockCodes():
     body = {
         'values': [[code] for code in new_codes]
     }
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
 
 
-    now = now_local()
+    now = services.now_local()
     current_time = now.strftime("%I:%M %p")
     bikelist = []
     for idx, row in enumerate(values):
@@ -681,7 +591,7 @@ def addUserWithoutVerification():
 
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -694,7 +604,7 @@ def addUserWithoutVerification():
         requests = [{
             "deleteDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "dimension": "ROWS",
                     "startIndex": email_idx + 1,
                     "endIndex": email_idx + 2
@@ -712,7 +622,7 @@ def addUserWithoutVerification():
         'values': [[""]]
     }
     print(body)
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
@@ -744,7 +654,7 @@ def addPaidUser():
 
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -756,12 +666,12 @@ def addPaidUser():
         email_idx = user_list.index(email)
     else:
         return error("email is not in the userlist currently")
-    new_hold = holdUpdate(values[email_idx][4], holdToRemove="P")
+    new_hold = services.holdUpdate(values[email_idx][4], holdToRemove="P", tempBanTime = services.osSettings["tempTimeout"])
     target = "UserLog!D"+str(email_idx+2)+":E"+str(email_idx+2)
     body = {
         'values': [[date_selected.strftime("%m/%d/%Y"),new_hold]]
     }
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
@@ -781,7 +691,7 @@ def removePaidUser():
     email = email.strip().lower()
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -794,14 +704,14 @@ def removePaidUser():
     else:
         return error("email is not in the userlist currently")
     if int(values[email_idx][1]) >= 1:
-        new_hold = holdUpdate(values[email_idx][4], holdToAdd="P")
+        new_hold = services.holdUpdate(values[email_idx][4], holdToAdd="P", tempBanTime = services.osSettings["tempTimeout"])
     else:
         new_hold = values[email_idx][4]
     target = "UserLog!D"+str(email_idx+2)+":E"+str(email_idx+2)
     body = {
         'values': [["",new_hold]]
     }
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
@@ -821,7 +731,7 @@ def giveTimeExtension():
     email = email.strip().lower()
     RANGE_NAME = "Simple Bike Summary!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -849,7 +759,7 @@ def giveTimeExtension():
         body = {
             'values': [[new_extension]]
         }
-        sheet = get_sheets_service().spreadsheets()
+        sheet = services.get_sheets_service().spreadsheets()
         sheet.values().update(
             spreadsheetId=SPREADSHEET_ID, range=target,
             valueInputOption="USER_ENTERED", body=body).execute()
@@ -874,14 +784,14 @@ def adminCheckoutBike():
         check_out_bikes = sorted(int(x.strip()) for x in bike_ids.split(","))
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
     print(values)
-    email = osSettings["adminEmails"][0]
+    email = services.osSettings["adminEmails"][0]
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -890,7 +800,7 @@ def adminCheckoutBike():
     user_info = values[email_idx]
     RANGE_NAME = "Simple Bike Summary!A2:C"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -903,12 +813,12 @@ def adminCheckoutBike():
                 values[idx][1] = "Checked-out"
                 bikes_checked_out.append(int(row[0]))
                 driveCheckout(user_info, email_idx, int(row[0]), idx, -1)
-                message_body = (siteResponse["Emails"]["Unlocking"][1] + " #" + str(values[idx][0]) + ": "
+                message_body = (services.siteResponse["Emails"]["Unlocking"][1] + " #" + str(values[idx][0]) + ": "
                                 + str(values[idx][2]) +
-                                siteResponse["Emails"]["Unlocking"][2]
+                                services.siteResponse["Emails"]["Unlocking"][2]
                                 )
-                send_gmail(get_gmail_service(), email,
-                           siteResponse["Emails"]["Unlocking"][0] + str(values[idx][2]),
+                services.send_gmail(services.get_gmail_service(), email,
+                           services.siteResponse["Emails"]["Unlocking"][0] + str(values[idx][2]),
                            message_body)
     bikelist = []
     for row in values:
@@ -948,7 +858,7 @@ def forceCheckinBike():
     #Email sluonthemove about failed check-in
     RANGE_NAME = "Simple Bike Summary!A2:E"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -956,7 +866,7 @@ def forceCheckinBike():
     bike_values = result.get("values", "")
     RANGE_NAME = "UserLog!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -971,13 +881,13 @@ def forceCheckinBike():
             bike_values[idx][1] = "Checked-in"
             print(row)
             if len(row) > 4:
-                now = now_local()
+                now = services.now_local()
                 email = row[-1]
-                send_gmail(get_gmail_service(), osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
+                services.send_gmail(services.get_gmail_service(), services.osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
                            "The prior user was " + email + " and an Admin has now checked-in the bike")
-                if email != osSettings["adminEmails"][0]:
-                    send_gmail(get_gmail_service(), email, "Bike #" + str(row[0]) + siteResponse["Emails"]["Return"][0],
-                               siteResponse["Emails"]["Return"][1])
+                if email != services.osSettings["adminEmails"][0]:
+                    services.send_gmail(services.get_gmail_service(), email, "Bike #" + str(row[0]) + services.siteResponse["Emails"]["Return"][0],
+                               services.siteResponse["Emails"]["Return"][1])
                 if email in user_list:
                     email_idx = user_list.index(email)
                     driveCheckin(user_values[email_idx], email_idx, int(row[0]), idx, -1, "")
@@ -985,7 +895,7 @@ def forceCheckinBike():
                     driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
 
             else:
-                send_gmail(get_gmail_service(), osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
+                services.send_gmail(services.get_gmail_service(), services.osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
                            "The prior user was not able to be found in sheets and an Admin has now checked-in the bike")
                 print(row[0])
                 driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
@@ -1021,7 +931,7 @@ def setNewBikeStatus():
         return error("Did not enter a full status or select a bike")
     RANGE_NAME = "Simple Bike Summary!A2:D"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -1033,7 +943,7 @@ def setNewBikeStatus():
             body = {
                 'values': [[new_status,row[2],new_notes,"","",""]]
             }
-            sheet = get_sheets_service().spreadsheets()
+            sheet = services.get_sheets_service().spreadsheets()
             sheet.values().update(
                 spreadsheetId=SPREADSHEET_ID, range=target,
                 valueInputOption="USER_ENTERED", body=body).execute()
@@ -1054,7 +964,7 @@ def removeBikeFromSystem():
     bikeid = data.get("bikeid", "")
     RANGE_NAME = "Simple Bike Summary!A2:G"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -1066,7 +976,7 @@ def removeBikeFromSystem():
         requests = [{
             "deleteDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "sheetId": services.bike_sheet_dict["Simple Bike Summary"],
                     "dimension": "ROWS",
                     "startIndex": bike_idx + 1,
                     "endIndex": bike_idx + 2
@@ -1104,7 +1014,7 @@ def addBikeToSystem():
         return error("The bikeid entered was not a whole number")
     RANGE_NAME = "Simple Bike Summary!A2:D"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -1122,7 +1032,7 @@ def addBikeToSystem():
         {
             "insertDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "sheetId": services.bike_sheet_dict["Simple Bike Summary"],
                     "dimension": "ROWS",
                     "startIndex": bike_idx+1,
                     "endIndex": bike_idx+2
@@ -1133,7 +1043,7 @@ def addBikeToSystem():
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "sheetId": services.bike_sheet_dict["Simple Bike Summary"],
                     "startRowIndex": bike_idx+1,
                     "endRowIndex": bike_idx+2,
                     "startColumnIndex": 0,
@@ -1158,12 +1068,12 @@ def addBikeToSystem():
         while not code_set:
             new_sheet_id = randint(100000000,999999999)
             if new_sheet_id not in set(bike_sheet_dict.values()):
-                bike_sheet_dict["Bike"+str(bikeid)] = new_sheet_id
+                services.bike_sheet_dict["Bike"+str(bikeid)] = new_sheet_id
                 code_set = True
         requests.extend([{
             "addSheet": {
                 "properties": {
-                    "sheetId": bike_sheet_dict["Bike"+str(bikeid)],
+                    "sheetId": services.bike_sheet_dict["Bike"+str(bikeid)],
                     "title": "Bike"+str(bikeid),
                     "gridProperties": {
                         "rowCount": 5,
@@ -1177,7 +1087,7 @@ def addBikeToSystem():
             {
                 "updateCells": {
                     "range": {
-                        "sheetId": bike_sheet_dict["Bike"+str(bikeid)],
+                        "sheetId": services.bike_sheet_dict["Bike"+str(bikeid)],
                         "startRowIndex": 0,
                         "endRowIndex": 1,
                         "startColumnIndex": 0,
@@ -1212,7 +1122,7 @@ def addBikeToSystem():
 @app.route("/getHelmetList", methods = ["POST"])
 def getHelmetList():
     return jsonify({
-        "textbox": "The current helmets listed in the system are: <br>"+str(osSettings["helmets"])
+        "textbox": "The current helmets listed in the system are: <br>"+str(services.osSettings["helmets"])
     })
 
 @app.route("/addHelmets", methods = ["POST"])
@@ -1229,16 +1139,16 @@ def addHelmets():
         new_helmets = sorted(int(x.strip()) for x in helmets.split(","))
     else:
         return error("no helmets were entered in the box to be added")
-    new_helmets.extend( osSettings["helmets"])
+    new_helmets.extend( services.osSettings["helmets"])
     new_helmets.sort()
     new_helmets = list(dict.fromkeys(new_helmets))
-    osSettings["helmets"] = new_helmets
+    services.osSettings["helmets"] = new_helmets
 
     target = "osSettings!B1"
     body = {
         'values': [new_helmets]
     }
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
@@ -1264,7 +1174,7 @@ def removeHelmets():
         return error("no helmets were entered in the box to be removed")
     new_helmets = []
     removed_count = 0
-    for helm in osSettings["helmets"]:
+    for helm in services.osSettings["helmets"]:
         if helm not in skip_helmets:
             new_helmets.append(helm)
         else:
@@ -1272,13 +1182,13 @@ def removeHelmets():
 
     new_helmets.sort()
     new_helmets = list(dict.fromkeys(new_helmets))
-    osSettings["helmets"] = new_helmets
+    services.osSettings["helmets"] = new_helmets
     sheets_new_helmets = new_helmets + ([""] *removed_count)
     target = "osSettings!B1"
     body = {
         'values': [sheets_new_helmets]
     }
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
@@ -1297,7 +1207,7 @@ def lastBikeUsers():
         return error(errormessage)
     RANGE_NAME = "Simple Bike Summary!A2:B"
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
         spreadsheetId=SPREADSHEET_ID,
         range=RANGE_NAME
@@ -1308,7 +1218,7 @@ def lastBikeUsers():
     for bikeid in bike_list:
         ranges.append("Bike"+bikeid+"!B2")
 
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     # The single batch call
     requests = sheet.values().batchGet(
         spreadsheetId=SPREADSHEET_ID,
@@ -1318,7 +1228,7 @@ def lastBikeUsers():
 
     value_ranges = response.get('valueRanges', [])
 
-    now = now_local()
+    now = services.now_local()
     current_time = now.strftime("%I:%M %p")
     bikelist = []
     for idx, row in enumerate(values):
@@ -1358,8 +1268,8 @@ def error(message, status=400):
 
 
 def addUser(email, send_email = True):
-    now = now_local()
-    sheet = get_sheets_service().spreadsheets()
+    now = services.now_local()
+    sheet = services.get_sheets_service().spreadsheets()
     today = date.today()
     account_expiration = date(today.year + (today.month > 5), 5, 31)
     code_expiration = now + timedelta(minutes=30)
@@ -1368,7 +1278,7 @@ def addUser(email, send_email = True):
         {
             "insertDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "dimension": "ROWS",
                     "startIndex": 1,
                     "endIndex": 2
@@ -1379,7 +1289,7 @@ def addUser(email, send_email = True):
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "startRowIndex": 1,
                     "endRowIndex": 2,
                     "startColumnIndex": 0,
@@ -1406,14 +1316,14 @@ def addUser(email, send_email = True):
         body={'requests': [requests]}
     ).execute()
     safe_email = quote(email)
-    message_body = ( siteResponse["Emails"]["Verification"][1]+
-            "<a href=" + osSettings["PageUrl"]+"/?email=" + safe_email + "&code=" + str(verification_code) + ">Verify by clicking here </a>"
-                     + siteResponse["Emails"]["Verification"][2]+ "<a href="+osSettings["PageUrl"]+"/?vp=1>"+osSettings["PageUrl"]+"/?vp=1 </a>"
+    message_body = ( services.siteResponse["Emails"]["Verification"][1]+
+            "<a href=" + services.osSettings["PageUrl"]+"/?email=" + safe_email + "&code=" + str(verification_code) + ">Verify by clicking here </a>"
+                     + services.siteResponse["Emails"]["Verification"][2]+ "<a href="+services.osSettings["PageUrl"]+"/?vp=1>"+services.osSettings["PageUrl"]+"/?vp=1 </a>"
     )
     if send_email:
-        send_gmail(get_gmail_service(),email, siteResponse["Emails"]["Verification"][0] + str(verification_code),message_body)
+        services.send_gmail(services.get_gmail_service(),email, services.siteResponse["Emails"]["Verification"][0] + str(verification_code),message_body)
 
-def emailChecker(email,on = osSettings["EmailChecking"]):
+def emailChecker(email,on = services.osSettings["EmailChecking"]):
     period = False
     emailLegit = False
     try:
@@ -1432,7 +1342,7 @@ def emailChecker(email,on = osSettings["EmailChecking"]):
             break
     return emailLegit or not on
 
-def holdChecker(hold_code, max_amount = osSettings["MaxBikes"], tempBan = osSettings["TempBan"]):
+def holdChecker(hold_code, max_amount = services.osSettings["MaxBikes"], tempBan = services.osSettings["TempBan"]):
     hold = False
     topText = ""
     textbox = ""
@@ -1442,61 +1352,49 @@ def holdChecker(hold_code, max_amount = osSettings["MaxBikes"], tempBan = osSett
     if hold_code[0] == "#":
         code = hold_code[1:6]
         if "T" in code:
-            now = now_local()
+            now = services.now_local()
             hold_time = hold_code[7:]
-            temp = timeExtractor(hold_time)
+            temp = services.timeExtractor(hold_time)
             if temp > now:
                 hold = tempBan
-                topText = siteResponse["Check-out"]["Fail"][0]
-                textbox = siteResponse["Check-out"]["Fail"][1]+" You must wait " + str(int((temp - now).seconds / 60) + 1) + " minutes to check out a new bike"
+                topText = services.siteResponse["Check-out"]["Fail"][0]
+                textbox = services.siteResponse["Check-out"]["Fail"][1]+" You must wait " + str(int((temp - now).seconds / 60) + 1) + " minutes to check out a new bike"
             # Could add an else here to delete it, but that is a later problem
         if "U" in code:
             position = code.index("U")
             amt_checked_out = int(code[position + 1], 16)
             if amt_checked_out >= max_amount:
                 hold = True
-                topText = siteResponse["Check-out"]["U-hold"][0]
-                textbox = siteResponse["Check-out"]["U-hold"][1]+" ("+str(max_amount)+") "+siteResponse["Check-out"]["U-hold"][2]+" You currently have "+code[position + 1] +" bike checked out"
+                topText = services.siteResponse["Check-out"]["U-hold"][0]
+                textbox = services.siteResponse["Check-out"]["U-hold"][1]+" ("+str(max_amount)+") "+services.siteResponse["Check-out"]["U-hold"][2]+" You currently have "+code[position + 1] +" bike checked out"
         if "P" in code:
             hold = True
-            topText = siteResponse["Check-out"]["P-hold"][0]
-            textbox = siteResponse["Check-out"]["P-hold"][1]
+            topText = services.siteResponse["Check-out"]["P-hold"][0]
+            textbox = services.siteResponse["Check-out"]["P-hold"][1]
         if "L" in code:
             hold = True
-            topText = siteResponse["Check-out"]["L-hold"][0]
-            textbox = siteResponse["Check-out"]["L-hold"][1]
+            topText = services.siteResponse["Check-out"]["L-hold"][0]
+            textbox = services.siteResponse["Check-out"]["L-hold"][1]
 
 
     else: #This is if they have a manually added hold on the account
         hold = True
-        topText = siteResponse["Check-out"]["Other-hold"][0]
-        textbox = siteResponse["Check-out"]["Other-hold"][1]
+        topText = services.siteResponse["Check-out"]["Other-hold"][0]
+        textbox = services.siteResponse["Check-out"]["Other-hold"][1]
 
 
     return hold, [topText, textbox]
 
-def timeExtractor(time):
-    date_indices = [i for i, x in enumerate(time) if x == ('/')]
-    time_indices = [i for i, x in enumerate(time) if x == (':')]
-    year = int(time[date_indices[1] + 1:date_indices[1] + 5])
-    month = int(time[0:date_indices[0]])
-    day = int(time[date_indices[0] + 1:date_indices[1]])
-    hour = int(time[time_indices[0] - 2:time_indices[0]])
-    minute = int(time[time_indices[0] + 1:time_indices[1]])
-    second = int(time[time_indices[1] + 1:time_indices[1] + 3])
-    temp = datetime(year, month, day, hour, minute, second, tzinfo=LOCAL_TZ)
-    return temp
-
 def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     #4 Updates to be done
     #Update userlog with times checked out and new hold on account
     #Update bike summary with checked-out
     #Update bike specific log (add a row)
     #Update helmet log
     hold = user_info[4]
-    hold = holdUpdate(hold, "RU")
-    now = now_local()
+    hold = services.holdUpdate(hold, "RU", tempBanTime = services.osSettings["tempTimeout"])
+    now = services.now_local()
 
     requests = [
 
@@ -1504,7 +1402,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "startRowIndex": email_idx + 1,
                     "endRowIndex": email_idx + 2,
                     "startColumnIndex": 1,
@@ -1521,7 +1419,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "startRowIndex": email_idx + 1,
                     "endRowIndex": email_idx + 2,
                     "startColumnIndex": 4,
@@ -1538,7 +1436,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "sheetId": services.bike_sheet_dict["Simple Bike Summary"],
                     "startRowIndex": bike_idx + 1,
                     "endRowIndex": bike_idx + 2,
                     "startColumnIndex": 1,
@@ -1555,7 +1453,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "sheetId": services.bike_sheet_dict["Simple Bike Summary"],
                     "startRowIndex": bike_idx + 1,
                     "endRowIndex": bike_idx + 2,
                     "startColumnIndex": 4,
@@ -1575,7 +1473,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
         {
             "insertDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Bike" + str(bikeid)],
+                    "sheetId": services.bike_sheet_dict["Bike" + str(bikeid)],
                     "dimension": "ROWS",
                     "startIndex": 1,
                     "endIndex": 2
@@ -1588,7 +1486,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Bike" + str(bikeid)],
+                    "sheetId": services.bike_sheet_dict["Bike" + str(bikeid)],
                     "startRowIndex": 1,
                     "endRowIndex": 2,
                     "startColumnIndex": 0,
@@ -1611,7 +1509,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
             {
                 "insertDimension": {
                     "range": {
-                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "sheetId": services.bike_sheet_dict["HelmetLog"],
                         "dimension": "ROWS",
                         "startIndex": 1,
                         "endIndex": 2
@@ -1624,7 +1522,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
             {
                 "updateCells": {
                     "range": {
-                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "sheetId": services.bike_sheet_dict["HelmetLog"],
                         "startRowIndex": 1,
                         "endRowIndex": 2,
                         "startColumnIndex": 0,
@@ -1649,7 +1547,7 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
     ).execute()
     
 def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_long_term = False):
-    sheet = get_sheets_service().spreadsheets()
+    sheet = services.get_sheets_service().spreadsheets()
     # 4 Updates to be done
     # Update userlog with times checked out and new hold on account
     # Update bike summary with checked-out
@@ -1657,13 +1555,13 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
     # Update helmet log
 
 
-    now = now_local()
+    now = services.now_local()
 
     requests = [
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "sheetId": services.bike_sheet_dict["Simple Bike Summary"],
                     "startRowIndex": bike_idx + 1,
                     "endRowIndex": bike_idx + 2,
                     "startColumnIndex": 1,
@@ -1680,7 +1578,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Simple Bike Summary"],
+                    "sheetId": services.bike_sheet_dict["Simple Bike Summary"],
                     "startRowIndex": bike_idx + 1,
                     "endRowIndex": bike_idx + 2,
                     "startColumnIndex": 4,
@@ -1701,7 +1599,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         {
             "insertDimension": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Bike" + str(bikeid)],
+                    "sheetId": services.bike_sheet_dict["Bike" + str(bikeid)],
                     "dimension": "ROWS",
                     "startIndex": 1,
                     "endIndex": 2
@@ -1714,7 +1612,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["Bike" + str(bikeid)],
+                    "sheetId": services.bike_sheet_dict["Bike" + str(bikeid)],
                     "startRowIndex": 1,
                     "endRowIndex": 2,
                     "startColumnIndex": 0,
@@ -1736,13 +1634,13 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
     if user_info[0] != "N/A":
         hold = user_info[4]
         if hold_long_term:
-            hold = holdUpdate(hold, holdToAdd="L")
-        hold = holdUpdate(hold, holdToRemove="U")
+            hold = services.holdUpdate(hold, holdToAdd="L", tempBanTime = services.osSettings["tempTimeout"])
+        hold = services.holdUpdate(hold, holdToRemove="U", tempBanTime = services.osSettings["tempTimeout"])
         requests.extend([
         {
             "updateCells": {
                 "range": {
-                    "sheetId": bike_sheet_dict["UserLog"],
+                    "sheetId": services.bike_sheet_dict["UserLog"],
                     "startRowIndex": email_idx + 1,
                     "endRowIndex": email_idx + 2,
                     "startColumnIndex": 4,
@@ -1764,7 +1662,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
             {
                 "insertDimension": {
                     "range": {
-                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "sheetId": services.bike_sheet_dict["HelmetLog"],
                         "dimension": "ROWS",
                         "startIndex": 1,
                         "endIndex": 2
@@ -1777,7 +1675,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
             {
                 "updateCells": {
                     "range": {
-                        "sheetId": bike_sheet_dict["HelmetLog"],
+                        "sheetId": services.bike_sheet_dict["HelmetLog"],
                         "startRowIndex": 1,
                         "endRowIndex": 2,
                         "startColumnIndex": 0,
@@ -1801,7 +1699,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         body={'requests': [requests]}
     ).execute()
 
-def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = osSettings["tempTimeout"]):
+def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = services.osSettings["tempTimeout"]):
     codeDict = {}
     #Unpack the current dictionary
     if currentHold != "":
@@ -1814,9 +1712,9 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = osS
             options = ["T", "R"]
             for letter in options:
                 if letter in code:
-                    now = now_local()
+                    now = services.now_local()
                     hold_time = currentHold[7:]
-                    temp = timeExtractor(hold_time)
+                    temp = services.timeExtractor(hold_time)
                     if temp > now: #This tells it not to change the time
                         codeDict.update({letter: temp})
             options = ["L", "P"]
@@ -1836,7 +1734,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = osS
     for item in holdToAdd:
         if item in codeDict.keys():
             if item == "R": #currently 'recently' counts as 30 minutes and so does temp ban
-                now = now_local()
+                now = services.now_local()
                 T_time = now + timedelta(minutes=tempBanTime)
                 codeDict.update({"T": T_time})
                 del codeDict["R"]
@@ -1844,7 +1742,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = osS
                 codeDict[item] = codeDict[item] + 1
         else:
             if item == "T" or item == "R":
-                now = now_local()
+                now = services.now_local()
                 T_time = now + timedelta(minutes=tempBanTime)
                 codeDict.update({item: T_time})
             else:
@@ -1886,9 +1784,9 @@ def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "",
                 length_of_extension = int(code[position + 1:position+3], 16)
                 codeDict.update({"X":length_of_extension})
             if "M" in code:
-                now = now_local()
+                now = services.now_local()
                 email_time = extension_code[7:]
-                temp = timeExtractor(email_time)
+                temp = services.timeExtractor(email_time)
                 codeDict.update({"M": temp})
 
             # Remove all items we need to remove from the dictionary
@@ -1904,13 +1802,13 @@ def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "",
     for item in extensionToAdd:
         if item in codeDict.keys():
             if item == "M":
-                now = now_local()
+                now = services.now_local()
                 codeDict.update({"M": now})
             elif codeDict[item] < 255:
                 codeDict[item] = codeDict[item] + 1
         else:
             if item == "M":
-                now = now_local()
+                now = services.now_local()
                 codeDict.update({"M": now})
             else:
                 codeDict.update({item: 1})
@@ -1939,22 +1837,22 @@ def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "",
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx):
     try:
-        now = now_local()
+        now = services.now_local()
         if photo_path != "":
             contents = "<p> Bike #"+str(bike)+" is checked in as of: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p><p> Last user was: <br>"+email+"</p> Photo included:"
-            send_gmail(get_gmail_service(),osSettings["adminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
+            services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
         if bciw:
-            send_gmail(get_gmail_service(),email,siteResponse["Emails"]["ForgottenReturn"][0]+str(bike),
-                       siteResponse["Emails"]["ForgottenReturn"][1])
-            send_gmail(get_gmail_service(),osSettings["adminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
+            services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["ForgottenReturn"][0]+str(bike),
+                       services.siteResponse["Emails"]["ForgottenReturn"][1])
+            services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
-            send_gmail(get_gmail_service(),email,"Bike #"+str(bike)+siteResponse["Emails"]["Return"][0],siteResponse["Emails"]["Return"][1])
+            services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
         driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
 
         blank_issue_responses = {
                                     s.strip().lower()
-                                    for s in osSettings["blankResponses"]
+                                    for s in services.osSettings["blankResponses"]
                                     if s is not None
                                 } | {""}
 
@@ -1962,52 +1860,12 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             #This means there is an issue to be reported and sent to email
             contents = "<p> Reported issue is: <br>" +str(issues)+"<p> Bike #"+str(bike)+" was checked in at: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p> <p>Last user was: <br>"+email+"</p>"
             if photo_path != "":
-                send_gmail(get_gmail_service(),osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
+                services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
             else:
-                send_gmail(get_gmail_service(),osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
+                services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
 
-def send_gmail(service,to,subject,html_contents,attachments=None):
-    if attachments is None:
-        attachments = []
-    elif isinstance(attachments, str):
-        attachments = [attachments]
-    if isinstance(to, (list, tuple, set)):
-        to = ", ".join(to)
-    # Root message
-    msg = MIMEMultipart()
-    msg["To"] = to
-    msg["From"] = "me"
-    msg["Subject"] = subject
-
-    # HTML body
-    msg.attach(MIMEText(html_contents, "html"))
-    # Attachments
-    for path in attachments:
-        content_type, encoding = mimetypes.guess_type(path)
-        if content_type is None:
-            content_type = "application/octet-stream"
-
-        main_type, sub_type = content_type.split("/", 1)
-
-        with open(path, "rb") as f:
-            part = MIMEBase(main_type, sub_type)
-            part.set_payload(f.read())
-        encoders.encode_base64(part)
-        filename = path.split("/")[-1]
-        part.add_header(
-            "Content-Disposition",
-            f'attachment; filename="{filename}"'
-        )
-        msg.attach(part)
-    # Encode message
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    # Send
-    service.users().messages().send(
-        userId="me",
-        body={"raw": raw}
-    ).execute()
 
 
 @app.route("/")
