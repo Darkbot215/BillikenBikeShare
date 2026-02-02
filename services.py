@@ -130,6 +130,8 @@ def load_settings():
         if len(osSettings[row[0]]) == 1:
             osSettings[row[0]] = osSettings[row[0]][0]
 
+    if isinstance(osSettings["AdminEmails"], str):
+        osSettings["AdminEmails"] = [osSettings["AdminEmails"]]
 
     osSettings["HelmetList"] = [int(x) for x in osSettings["HelmetList"]]
     osSettings["adminLoginSafety"] = int(osSettings["adminLoginSafety"]) == 1
