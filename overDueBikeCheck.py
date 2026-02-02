@@ -204,7 +204,7 @@ def main():
                            services.siteResponse["Emails"]["Overdue"+extra_overdue][1] +
                            "<a href="+services.osSettings["PageUrl"]+"/?bike="+row[0]+">"+services.osSettings["PageUrl"]+"/?bike="+row[0]+"</a>"+
                            services.siteResponse["Emails"]["Overdue"+extra_overdue][2] + "This notification is for bike: <b>" + row[0]+"</b>")
-                send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"],"Bike #"+row[0]+" is overdue for return",
+                send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Bike #"+row[0]+" is overdue for return",
                            "<p> This bike was checked out at: <br>"+row[5]+"</p><p> The user was:<br>"+row[4]+"</p> It is overdue and a notification was just sent to the user")
                 update = extensionUpdate(row[6],"M")
                 target = "Simple Bike Summary!G" + str(row_idx + 1)

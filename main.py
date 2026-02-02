@@ -99,14 +99,14 @@ def bike_status():
         return jsonify({
             "status": 0,
             "text1": services.siteResponse["InitialPage"]["Checked-in"][1],
-            "helmetList": services.osSettings["helmets"]
+            "helmetList": services.osSettings["HelmetList"]
         })
     elif values[idx][1] == "Checked-out":
         return jsonify({
             "status":1,
             "text1": services.siteResponse["InitialPage"]["Checked-out"][1],
             "text2": services.siteResponse["InitialPage"]["Checked-out"][2],
-            "helmetList": services.osSettings["helmets"]
+            "helmetList": services.osSettings["HelmetList"]
         })
     else:
         RANGE_NAME = "Simple Bike Summary!D"+str(idx+2) #Plus 2 for the title row not read, and that excel starts at 1 not 0
@@ -170,7 +170,6 @@ def checkOut():
         })
     hold_status = user_info[4]
     if user_info[3] == "" and int(user_info[1]) >= 2:
-        pass
         hold_status = services.holdUpdate(hold_status, holdToAdd = "P", tempBanTime = services.osSettings["tempTimeout"])
         #This is a scuffed dues based hold. A permanent one should be added
     hold, output = holdChecker(hold_status) #EDIT MAX AMOUNT OF BIKES CHECKED OUT
@@ -409,7 +408,7 @@ def adminLogin(local_use = False, passCode= None):
         data = request.get_json()
         passCode = int(data.get("loginCode", ""))
     if services.osSettings["adminLoginSafety"]:
-        email = services.osSettings["adminEmails"][0]
+        email = services.osSettings["AdminEmails"][0]
         RANGE_NAME = "UserLog!A2:G"
 
         sheet = services.get_sheets_service().spreadsheets()
@@ -464,7 +463,7 @@ def adminLogin(local_use = False, passCode= None):
 def generateAdminCode():
     global admin_code
     admin_code = [randint(10000000, 99999999), services.now_local() + timedelta(minutes=15)]
-    email = services.osSettings["adminEmails"][0]
+    email = services.osSettings["AdminEmails"][0]
 
     if services.osSettings["adminLoginSafety"]:
         RANGE_NAME = "UserLog!A2:G"
@@ -800,7 +799,7 @@ def adminCheckoutBike():
     ).execute()
     values = result.get("values", "")
     print(values)
-    email = services.osSettings["adminEmails"][0]
+    email = services.osSettings["AdminEmails"][0]
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -892,9 +891,9 @@ def forceCheckinBike():
             if len(row) > 4:
                 now = services.now_local()
                 email = row[-1]
-                services.send_gmail(services.get_gmail_service(), services.osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
+                services.send_gmail(services.get_gmail_service(), services.osSettings["AdminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
                            "The prior user was " + email + " and an Admin has now checked-in the bike")
-                if email != services.osSettings["adminEmails"][0]:
+                if email != services.osSettings["AdminEmails"][0]:
                     services.send_gmail(services.get_gmail_service(), email, "Bike #" + str(row[0]) + services.siteResponse["Emails"]["Return"][0],
                                services.siteResponse["Emails"]["Return"][1])
                 if email in user_list:
@@ -904,7 +903,7 @@ def forceCheckinBike():
                     driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
 
             else:
-                services.send_gmail(services.get_gmail_service(), services.osSettings["adminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
+                services.send_gmail(services.get_gmail_service(), services.osSettings["AdminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
                            "The prior user was not able to be found in sheets and an Admin has now checked-in the bike")
                 print(row[0])
                 driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
@@ -1072,11 +1071,11 @@ def addBikeToSystem():
         }
     ]
 
-    if "Bike"+str(bikeid) not in bike_sheet_dict:
+    if "Bike"+str(bikeid) not in services.bike_sheet_dict:
         code_set = False
         while not code_set:
             new_sheet_id = randint(100000000,999999999)
-            if new_sheet_id not in set(bike_sheet_dict.values()):
+            if new_sheet_id not in set(services.bike_sheet_dict.values()):
                 services.bike_sheet_dict["Bike"+str(bikeid)] = new_sheet_id
                 code_set = True
         requests.extend([{
@@ -1131,7 +1130,7 @@ def addBikeToSystem():
 @app.route("/getHelmetList", methods = ["POST"])
 def getHelmetList():
     return jsonify({
-        "textbox": "The current helmets listed in the system are: <br>"+str(services.osSettings["helmets"])
+        "textbox": "The current helmets listed in the system are: <br>"+str(services.osSettings["HelmetList"])
     })
 
 @app.route("/addHelmets", methods = ["POST"])
@@ -1148,10 +1147,10 @@ def addHelmets():
         new_helmets = sorted(int(x.strip()) for x in helmets.split(","))
     else:
         return error("no helmets were entered in the box to be added")
-    new_helmets.extend( services.osSettings["helmets"])
+    new_helmets.extend( services.osSettings["HelmetList"])
     new_helmets.sort()
     new_helmets = list(dict.fromkeys(new_helmets))
-    services.osSettings["helmets"] = new_helmets
+    services.osSettings["HelmetList"] = new_helmets
 
     target = "osSettings!B1"
     body = {
@@ -1183,7 +1182,7 @@ def removeHelmets():
         return error("no helmets were entered in the box to be removed")
     new_helmets = []
     removed_count = 0
-    for helm in services.osSettings["helmets"]:
+    for helm in services.osSettings["HelmetList"]:
         if helm not in skip_helmets:
             new_helmets.append(helm)
         else:
@@ -1191,7 +1190,7 @@ def removeHelmets():
 
     new_helmets.sort()
     new_helmets = list(dict.fromkeys(new_helmets))
-    services.osSettings["helmets"] = new_helmets
+    services.osSettings["HelmetList"] = new_helmets
     sheets_new_helmets = new_helmets + ([""] *removed_count)
     target = "osSettings!B1"
     body = {
@@ -1266,7 +1265,7 @@ def reloadSiteSettings():
     good_code, errormessage = adminLogin(True, passCode)
     if not good_code:
         return error(errormessage)
-    load_settings()
+    services.load_settings()
     return jsonify({
         "topText": "Success at reloading site settings",
         "textbox": "The site has updated with the new OS settings"
@@ -1849,12 +1848,12 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
         now = services.now_local()
         if photo_path != "":
             contents = "<p> Bike #"+str(bike)+" is checked in as of: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p><p> Last user was: <br>"+email+"</p> Photo included:"
-            services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
+            services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
         if bciw:
             services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["ForgottenReturn"][0]+str(bike),
                        services.siteResponse["Emails"]["ForgottenReturn"][1])
-            services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
+            services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
             services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
         driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
@@ -1869,9 +1868,9 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             #This means there is an issue to be reported and sent to email
             contents = "<p> Reported issue is: <br>" +str(issues)+"<p> Bike #"+str(bike)+" was checked in at: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p> <p>Last user was: <br>"+email+"</p>"
             if photo_path != "":
-                services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
+                services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo included",photo_path)
             else:
-                services.send_gmail(services.get_gmail_service(),services.osSettings["adminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
+                services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
 

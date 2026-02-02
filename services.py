@@ -125,20 +125,19 @@ def load_settings():
     ).execute()
 
     values = result.get("values", "")
-    osSettings["helmets"] = values[0][1:]
-    osSettings["helmets"] = [int(x) for x in osSettings["helmets"]]
+    for row in values:
+        osSettings[row[0]] = row[1:]
+        if len(osSettings[row[0]]) == 1:
+            osSettings[row[0]] = osSettings[row[0]][0]
 
-    print("helmets")
-    print(osSettings["helmets"])
-    osSettings["adminEmails"] = values[1][1:]
-    osSettings["adminLoginSafety"] = int(values[2][1]) == 1
-    osSettings["tempTimeout"] = int(values[3][1])
-    osSettings["checkOutLength"] = int(values[4][1])
-    osSettings["TempBan"] = int(values[5][1]) == 1
-    osSettings["EmailChecking"] = int(values[6][1]) == 1
-    osSettings["MaxBikes"] = int(values[7][1])
-    osSettings["PageUrl"] = values[8][1]
-    osSettings["blankResponses"] = values[9][1:]
+
+    osSettings["HelmetList"] = [int(x) for x in osSettings["HelmetList"]]
+    osSettings["adminLoginSafety"] = int(osSettings["adminLoginSafety"]) == 1
+    osSettings["tempTimeout"] = int(osSettings["tempTimeout"])
+    osSettings["checkOutLength"] = int(osSettings["checkOutLength"])
+    osSettings["TempBan"] = int(osSettings["TempBan"]) == 1
+    osSettings["EmailChecking"] = int(osSettings["EmailChecking"]) == 1
+    osSettings["MaxBikes"] = int(osSettings["MaxBikes"])
 
 
 def timeExtractor(time):
