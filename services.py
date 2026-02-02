@@ -133,6 +133,7 @@ def load_settings():
     if isinstance(osSettings["AdminEmails"], str):
         osSettings["AdminEmails"] = [osSettings["AdminEmails"]]
 
+
     osSettings["HelmetList"] = [int(x) for x in osSettings["HelmetList"]]
     osSettings["adminLoginSafety"] = int(osSettings["adminLoginSafety"]) == 1
     osSettings["tempTimeout"] = int(osSettings["tempTimeout"])
