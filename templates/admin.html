@@ -287,6 +287,24 @@
     
 
     <script>
+        const adminActions = {
+                "Get All Bike Lock Codes": getAllBikeLockCodes,
+                "Set New Bike Lock Codes": setNewBikeLockCodes,
+                "Add New User Without Verification": addNewUserWithoutVerification,
+                "Show Last Bike Users": lastBikeUsers,
+                "Add Paid User to System": addPaidUser,
+                "Remove Paid Users": removePaidUsers,
+                "Give a User a Time Extension": giveTimeExtension,
+                "Add a Hold on a User": addLongHold,
+                "Force Check-in Bike": forceCheckinBike,
+                "Check-out bikes (for rides ect.)": checkoutBikes,
+                "Set New Bike Status": setNewBikeStatus,
+                "Remove Bike From System": removeBikeFromSystem,
+                "Add Bike To System": addBikeToSystem,
+                "Add Helmets": addHelmets,
+                "Remove Helmets": removeHelmets,
+                "Reload Site Settings": reloadSiteSettings,
+            };
         function fillDropdown(listy, text = "") {
             const select = document.getElementById("mySelect");
 
@@ -494,12 +512,8 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ loginCode })
             }).then(data =>{
-                listOfOptions = ["Get All Bike Lock Codes","Set New Bike Lock Codes","Show Last Bike Users", "Add New User Without Verification","Add Paid User to System",
-                "Remove Paid Users", "Give a User a Time Extension", "Add a Hold on a User", "Force Check-in Bike", "Check-out bikes (for rides ect.)",
-                "Set New Bike Status", "Remove Bike From System", "Add Bike To System", "Add Helmets", "Remove Helmets", "Reload Site Settings"]
 
-
-                fillDropdown(listOfOptions);
+                fillDropdown(Object.keys(adminActions));
                 const dropdown = document.getElementById("mySelect");
 
                 dropdown.style.display = "block";
@@ -534,24 +548,6 @@
             const dropdown = document.getElementById("mySelect");
             const selectedText = dropdown.value;
 
-            const adminActions = {
-                "Get All Bike Lock Codes": getAllBikeLockCodes,
-                "Set New Bike Lock Codes": setNewBikeLockCodes,
-                "Add New User Without Verification": addNewUserWithoutVerification,
-                "Show Last Bike Users": lastBikeUsers,
-                "Add Paid User to System": addPaidUser,
-                "Remove Paid Users": removePaidUsers,
-                "Give a User a Time Extension": giveTimeExtension,
-                "Add a Hold on a User": addLongHold,
-                "Force Check-in Bike": forceCheckinBike,
-                "Check-out bikes (for rides ect.)": checkoutBikes,
-                "Set New Bike Status": setNewBikeStatus,
-                "Remove Bike From System": removeBikeFromSystem,
-                "Add Bike To System": addBikeToSystem,
-                "Add Helmets": addHelmets,
-                "Remove Helmets": removeHelmets,
-                "Reload Site Settings": reloadSiteSettings,
-            };
             hideAllPageElements();
             const action = adminActions[selectedText];
             if (typeof action === "function") {

@@ -907,15 +907,36 @@ def forceCheckinBike():
             print(row)
             if len(row) > 4:
                 now = services.now_local()
+                L_hold = False
                 email = row[-1]
                 services.send_gmail(services.get_gmail_service(), services.osSettings["AdminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
                            "The prior user was " + email + " and an Admin has now checked-in the bike")
                 if email != services.osSettings["AdminEmails"][0]:
                     services.send_gmail(services.get_gmail_service(), email, "Bike #" + str(row[0]) + services.siteResponse["Emails"]["Return"][0],
                                services.siteResponse["Emails"]["Return"][1])
+                    if services.osSettings["overdueHoldLength"] != -1:
+                        checked_out_time = services.timeExtractor(row[5])
+                        norm_hours = services.osSettings["checkOutLength"]
+                        if len(row) >= 7:
+                            extension, hour_count = services.extensionChecker(row[6])
+                            if extension:
+                                if hour_count is not None:
+                                    norm_hours += hour_count
+                        holdLevelDue = checked_out_time + timedelta(
+                            hours=(norm_hours + services.osSettings["overdueHoldLength"]))
+                        if now > holdLevelDue:
+                            L_hold = True
                 if email in user_list:
                     email_idx = user_list.index(email)
-                    driveCheckin(user_values[email_idx], email_idx, int(row[0]), idx, -1, "")
+                    driveCheckin(user_values[email_idx], email_idx, int(row[0]), idx, -1, "", L_hold)
+                    if L_hold:
+                        services.send_gmail(services.get_gmail_service(), email,
+                                            services.siteResponse["Emails"]["AutomaticHold"][0],
+                                            services.siteResponse["Emails"]["AutomaticHold"][1])
+                        services.send_gmail(services.get_gmail_service(), services.osSettings["AdminEmails"],
+                                            "Automatic Hold on User Account",
+                                            "<p>User " + email + " did not return their bike within the alloted time and now has a hold and is unable to check out bikes. </p> To remove the hold use the admin panel or manually edit the sheet")
+
                 else:
                     driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
 
@@ -1779,7 +1800,7 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
             services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["AutomaticHold"][0],
                        services.siteResponse["Emails"]["AutomaticHold"][1])
-            services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Automatic Hold on User Account","User "+email+" did not return their bike within the alloted time and now has a hold and is unable to check out bikes until an admin changes it")
+            services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Automatic Hold on User Account","<p>User "+email+" did not return their bike within the alloted time and now has a hold and is unable to check out bikes. </p> To remove the hold use the admin panel or manually edit the sheet")
         elif bciw:
             services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["ForgottenReturn"][0]+str(bike),
                        services.siteResponse["Emails"]["ForgottenReturn"][1])
