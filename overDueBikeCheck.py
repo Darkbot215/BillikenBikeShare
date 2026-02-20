@@ -101,47 +101,6 @@ def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "",
         return f"#{codeString:<6}{timeString}"
     return ""
 
-def send_gmail(service,to,subject,html_contents,attachments=None):
-    if attachments is None:
-        attachments = []
-    elif isinstance(attachments, str):
-        attachments = [attachments]
-    if isinstance(to, (list, tuple, set)):
-        to = ", ".join(to)
-    # Root message
-    msg = MIMEMultipart()
-    msg["To"] = to
-    msg["From"] = "me"
-    msg["Subject"] = subject
-
-    # HTML body
-    msg.attach(MIMEText(html_contents, "html"))
-    # Attachments
-    for path in attachments:
-        content_type, encoding = mimetypes.guess_type(path)
-        if content_type is None:
-            content_type = "application/octet-stream"
-
-        main_type, sub_type = content_type.split("/", 1)
-
-        with open(path, "rb") as f:
-            part = MIMEBase(main_type, sub_type)
-            part.set_payload(f.read())
-        encoders.encode_base64(part)
-        filename = path.split("/")[-1]
-        part.add_header(
-            "Content-Disposition",
-            f'attachment; filename="{filename}"'
-        )
-        msg.attach(part)
-    # Encode message
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    # Send
-    service.users().messages().send(
-        userId="me",
-        body={"raw": raw}
-    ).execute()
-
 
 
 def main():
@@ -200,11 +159,11 @@ def main():
 
                 if len(services.siteResponse["Emails"]["Overdue"+extra_overdue]) == 2:
                     services.siteResponse["Emails"]["Overdue"+extra_overdue].append("")
-                send_gmail(services.get_gmail_service(),row[4],services.siteResponse["Emails"]["Overdue"+extra_overdue][0],
+                services.send_gmail(services.get_gmail_service(),row[4],services.siteResponse["Emails"]["Overdue"+extra_overdue][0],
                            services.siteResponse["Emails"]["Overdue"+extra_overdue][1] +
                            "<a href="+services.osSettings["PageUrl"]+"/?bike="+row[0]+">"+services.osSettings["PageUrl"]+"/?bike="+row[0]+"</a>"+
                            services.siteResponse["Emails"]["Overdue"+extra_overdue][2] + "This notification is for bike: <b>" + row[0]+"</b>")
-                send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Bike #"+row[0]+" is overdue for return",
+                services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Bike #"+row[0]+" is overdue for return",
                            "<p> This bike was checked out at: <br>"+row[5]+"</p><p> The user was:<br>"+row[4]+"</p> It is overdue and a notification was just sent to the user")
                 update = extensionUpdate(row[6],"M")
                 target = "Simple Bike Summary!G" + str(row_idx + 1)
