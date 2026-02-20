@@ -229,6 +229,8 @@ def checkin():
     #hold option for user who failed to check in (default off)
     #Email sluonthemove about failed check-in
     RANGE_NAME = "Simple Bike Summary!A2:E"
+    #does this cause errors?
+    RANGE_NAME = "Simple Bike Summary!A2:G"
 
     sheet = services.get_sheets_service().spreadsheets()
     result = sheet.values().get(
@@ -763,7 +765,7 @@ def giveTimeExtension():
         row = values[indexes]
         if len(row) <= 6:
             row.extend([""] * (7 - len(row)))
-        new_extension = extensionUpdate(row[6], extensionToAdd='X'*ext_time)
+        new_extension = services.extensionUpdate(row[6], extensionToAdd='X'*ext_time)
         target = "Simple Bike Summary!G" + str(indexes + 2)
         body = {
             'values': [[new_extension]]
@@ -1750,67 +1752,6 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         body={'requests': [requests]}
     ).execute()
 
-
-def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "", ):
-    codeDict = {}
-    #Unpack the current dictionary
-    if extension_code != "":
-        if extension_code[0] == "#":
-            code = extension_code[1:6]
-            if "X" in code:
-                position = code.index("X")
-                length_of_extension = int(code[position + 1:position+3], 16)
-                codeDict.update({"X":length_of_extension})
-            if "M" in code:
-                now = services.now_local()
-                email_time = extension_code[7:]
-                temp = services.timeExtractor(email_time)
-                codeDict.update({"M": temp})
-
-            # Remove all items we need to remove from the dictionary
-            for item in codeDict.keys():
-                if item in "M":
-                    pass
-                elif item in extensionToRemove:
-                    if codeDict[item] > 0:
-                        codeDict[item] = codeDict[item] - 1
-        else: #I don't think we should be here? maybe email error code?
-            return extension_code
-    #Add all items we need to add
-    for item in extensionToAdd:
-        if item in codeDict.keys():
-            if item == "M":
-                now = services.now_local()
-                codeDict.update({"M": now})
-            elif codeDict[item] < 255:
-                codeDict[item] = codeDict[item] + 1
-        else:
-            if item == "M":
-                now = services.now_local()
-                codeDict.update({"M": now})
-            else:
-                codeDict.update({item: 1})
-
-    codeString = ""
-    timeString = ""
-    for item in codeDict.keys():
-        if item == "X" and codeDict[item] > 0:
-            codeString = codeString+item+ f"{codeDict[item]:X}"
-        elif item == "M":
-            print(codeDict[item])
-            timeString = codeDict[item].strftime("%m/%d/%Y %H:%M:%S")
-            codeString = codeString+item
-
-
-    if codeString != "":
-        if len(codeString) > 5:
-            #Send an email maybe of the error
-            return extension_code
-        while len(codeString) < 6:
-            codeString = codeString+" "
-
-        return f"#{codeString:<6}{timeString}"
-    return ""
 
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx):

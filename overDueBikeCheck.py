@@ -40,66 +40,6 @@ def extensionChecker(hold_code):
     extension = False
     return extension, None
 
-def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "", ):
-    codeDict = {}
-    #Unpack the current dictionary
-    if extension_code != "":
-        if extension_code[0] == "#":
-            code = extension_code[1:6]
-            if "X" in code:
-                position = code.index("X")
-                length_of_extension = int(code[position + 1:position+3], 16)
-                codeDict.update({"X":length_of_extension})
-            if "M" in code:
-                now = services.now_local()
-                email_time = extension_code[7:]
-                temp = services.timeExtractor(email_time)
-                codeDict.update({"M": temp})
-
-            # Remove all items we need to remove from the dictionary
-            for item in codeDict.keys():
-                if item in "M":
-                    pass
-                elif item in extensionToRemove:
-                    if codeDict[item] > 0:
-                        codeDict[item] = codeDict[item] - 1
-        else: #I don't think we should be here? maybe email error code?
-            return extension_code
-    #Add all items we need to add
-    for item in extensionToAdd:
-        if item in codeDict.keys():
-            if item == "M":
-                now = services.now_local()
-                codeDict.update({"M": now})
-            elif codeDict[item] < 255:
-                codeDict[item] = codeDict[item] + 1
-        else:
-            if item == "M":
-                now = services.now_local()
-                codeDict.update({"M": now})
-            else:
-                codeDict.update({item: 1})
-
-    codeString = ""
-    timeString = ""
-    for item in codeDict.keys():
-        if item == "X" and codeDict[item] > 0:
-            codeString = codeString+item+ f"{codeDict[item]:X}"
-        elif item == "M":
-            print(codeDict[item])
-            timeString = codeDict[item].strftime("%m/%d/%Y %H:%M:%S")
-            codeString = codeString+item
-
-
-    if codeString != "":
-        if len(codeString) > 5:
-            #Send an email maybe of the error
-            return extension_code
-        while len(codeString) < 6:
-            codeString = codeString+" "
-
-        return f"#{codeString:<6}{timeString}"
-    return ""
 
 
 
@@ -165,7 +105,7 @@ def main():
                            services.siteResponse["Emails"]["Overdue"+extra_overdue][2] + "This notification is for bike: <b>" + row[0]+"</b>")
                 services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Bike #"+row[0]+" is overdue for return",
                            "<p> This bike was checked out at: <br>"+row[5]+"</p><p> The user was:<br>"+row[4]+"</p> It is overdue and a notification was just sent to the user")
-                update = extensionUpdate(row[6],"M")
+                update = services.extensionUpdate(row[6],"M")
                 target = "Simple Bike Summary!G" + str(row_idx + 1)
                 body = {'values': [[update]]}
                 sheet = services.get_sheets_service().spreadsheets()
