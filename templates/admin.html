@@ -495,7 +495,7 @@
                 body: JSON.stringify({ loginCode })
             }).then(data =>{
                 listOfOptions = ["Get All Bike Lock Codes","Set New Bike Lock Codes","Show Last Bike Users", "Add New User Without Verification","Add Paid User to System",
-                "Remove Paid Users", "Give a User a Time Extension", "Force Check-in Bike", "Check-out bikes (for rides ect.)",
+                "Remove Paid Users", "Give a User a Time Extension", "Add a Hold on a User", "Force Check-in Bike", "Check-out bikes (for rides ect.)",
                 "Set New Bike Status", "Remove Bike From System", "Add Bike To System", "Add Helmets", "Remove Helmets", "Reload Site Settings"]
 
 
@@ -542,6 +542,7 @@
                 "Add Paid User to System": addPaidUser,
                 "Remove Paid Users": removePaidUsers,
                 "Give a User a Time Extension": giveTimeExtension,
+                "Add a Hold on a User": addLongHold,
                 "Force Check-in Bike": forceCheckinBike,
                 "Check-out bikes (for rides ect.)": checkoutBikes,
                 "Set New Bike Status": setNewBikeStatus,
@@ -1311,6 +1312,55 @@
                 document.getElementById("textboxA").innerHTML = `ERROR with login: ${err.message}`;
                 console.error(err);
             });
+        }
+
+        function addLongHold() {
+            document.getElementById("toptext").innerText = "Add a Hold on a User";
+            document.getElementById("textboxA").innerHTML = "<p>Enter the email of the user in the box below"
+            
+            document.getElementById("textboxB").innerHTML = "<p> Enter the body of an explanation email for the user who is getting a hold on them </p> This email will be automatically sent as a part of the hold process"
+            
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+            document.getElementById("textboxB").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("inputB").style.display = "block";
+           
+            
+            document.getElementById("buttonB").style.display = "block";
+
+            document.getElementById("buttonB").onclick = addLongHoldButton;
+        }
+        function addLongHoldButton() {
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const user_email = document.getElementById("input").value;
+            const email_body = document.getElementById("inputB").value;
+
+
+
+            fetchWithTimeout("/addUserHold", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode, user_email,  email_body})
+            }).then(data =>{
+                overlay.style.display = "none";
+                hideAllPageElements();
+
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+
+
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+            }).catch(err => {overlay.style.display = "none";
+                document.getElementById("textboxA").innerHTML = `ERROR with login: ${err.message}`;
+                console.error(err);
+        })
         }
 
         function lastBikeUsers() {

@@ -1259,6 +1259,48 @@ def lastBikeUsers():
         "bike_list": bikelist,
     })
 
+@app.route("/addUserHold", methods = ["POST"])
+def addUserHold():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    email = data.get("user_email","")
+    email_body = data.get("email_body","")
+    email = email.strip().lower()
+    RANGE_NAME = "UserLog!A2:G"
+
+    sheet = services.get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    user_list = [row[0] for row in values]
+    if email in user_list:
+        email_idx = user_list.index(email)
+    else:
+        return error("email is not in the userlist currently")
+    new_hold = services.holdUpdate(values[email_idx][4], holdToAdd="L",
+                                       tempBanTime=services.osSettings["tempTimeout"])
+
+    target = "UserLog!E" + str(email_idx + 2)
+    body = {
+        'values': [[new_hold]]
+    }
+    sheet = services.get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+    services.send_gmail(services.get_gmail_service(),email, services.siteResponse["Emails"]["ManualHold"][0], services.siteResponse["Emails"]["ManualHold"][1] + email_body + services.siteResponse["Emails"]["ManualHold"][2])
+    return jsonify({
+        "topText": "Success",
+        "textbox": "The user: " + email + " has a hold placed on their account"
+    })
+
+
 @app.route("/reloadSiteSettings", methods = ["POST"])
 def reloadSiteSettings():
     data = request.get_json()

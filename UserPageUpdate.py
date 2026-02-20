@@ -25,6 +25,10 @@ services.load_settings()
 
 
 def verificationInFuture(user_info):
+    # This makes it so users with L or other holds are not removed from the list
+    hold = user_info[4]
+    if hold.strip() != "" and ("#" not in hold or "L" in hold):
+        return True
     if len(user_info) == 7:
         temp = services.timeExtractor(user_info[6])
         now = services.now_local()
@@ -96,6 +100,10 @@ def userExpired(user_info):
     if expo is None:
         print(f"Error: Could not extract date from {raw_date}")
         return False  # If we can't read it, we assume NOT expired (or handle error)
+    #This makes it so users with L or other holds are not removed from the list
+    hold = user_info[4]
+    if hold.strip() != "" and ("#" not in hold or "L" in hold):
+        return False
     now = services.now_local()
     if now.date() > expo:
         return True
@@ -154,7 +162,6 @@ def main():
         # Checks and clears if dues have expired
         answer = duesExpired(row)
         if answer:
-            print("here")
             requests.append({
                 "updateCells": {
                     "range": {
