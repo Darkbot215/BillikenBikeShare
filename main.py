@@ -1358,10 +1358,10 @@ def holdChecker(hold_code, max_amount = services.osSettings["MaxBikes"], tempBan
         return hold, [topText, textbox]
 
     if hold_code[0] == "#":
-        code = hold_code[1:6]
+        code = hold_code[1:10]
         if "T" in code:
             now = services.now_local()
-            hold_time = hold_code[7:]
+            hold_time = hold_code[11:]
             temp = services.timeExtractor(hold_time)
             if temp > now:
                 hold = tempBan
@@ -1707,79 +1707,6 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
         body={'requests': [requests]}
     ).execute()
 
-def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = services.osSettings["tempTimeout"]):
-    codeDict = {}
-    #Unpack the current dictionary
-    if currentHold != "":
-        if currentHold[0] == "#":
-            code = currentHold[1:6]
-            if "U" in code:
-                position = code.index("U")
-                amt_checked_out = int(code[position + 1], 16)
-                codeDict.update({"U":amt_checked_out})
-            options = ["T", "R"]
-            for letter in options:
-                if letter in code:
-                    now = services.now_local()
-                    hold_time = currentHold[7:]
-                    temp = services.timeExtractor(hold_time)
-                    if temp > now: #This tells it not to change the time
-                        codeDict.update({letter: temp})
-            options = ["L", "P"]
-            for x in options:
-                if x in code:
-                    codeDict.update({x:1})
-            # Remove all items we need to remove from the dictionary
-            for item in codeDict.keys():
-                if item in holdToRemove:
-                    if item == "T" or item == "R":  # ignore T and R, the code already deals with them
-                        pass
-                    elif codeDict[item] > 0:
-                        codeDict[item] = codeDict[item] - 1
-        else: #I don't think we should be here? maybe email error code?
-            return currentHold
-    #Add all items we need to add
-    for item in holdToAdd:
-        if item in codeDict.keys():
-            if item == "R": #currently 'recently' counts as 30 minutes and so does temp ban
-                now = services.now_local()
-                T_time = now + timedelta(minutes=tempBanTime)
-                codeDict.update({"T": T_time})
-                del codeDict["R"]
-            elif codeDict[item] < 14:
-                codeDict[item] = codeDict[item] + 1
-        else:
-            if item == "T" or item == "R":
-                now = services.now_local()
-                T_time = now + timedelta(minutes=tempBanTime)
-                codeDict.update({item: T_time})
-            else:
-                codeDict.update({item: 1})
-
-    codeString = ""
-    timeString = ""
-    for item in codeDict.keys():
-        if item == "U" and codeDict[item] > 0:
-            codeString = codeString+item+ f"{codeDict[item]:X}"
-        elif item == "T" or item == "R":
-            if timeString == "":
-                timeString = codeDict[item].strftime("%m/%d/%Y %H:%M:%S")
-                codeString = codeString+item
-            else:
-                codeString = codeString.replace("R","T")
-                timeString = codeDict["T"].strftime("%m/%d/%Y %H:%M:%S")
-
-        elif codeDict[item] > 0:
-            codeString = codeString + item
-    if codeString != "":
-        if len(codeString) > 5:
-            #Send an email maybe of the error
-            return currentHold
-        while len(codeString) < 6:
-            codeString = codeString+" "
-
-        return f"#{codeString:<6}{timeString}"
-    return ""
 
 def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "", ):
     codeDict = {}

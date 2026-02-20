@@ -286,11 +286,5 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = Non
         elif codeDict[item] > 0:
             codeString = codeString + item
     if codeString != "":
-        if len(codeString) > 5:
-            #Send an email maybe of the error
-            return currentHold
-        while len(codeString) < 6:
-            codeString = codeString+" "
-
-        return f"#{codeString:<6}{timeString}"
+        return f"#{codeString:<10}{timeString}"
     return ""
