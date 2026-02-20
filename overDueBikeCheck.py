@@ -23,22 +23,7 @@ load_dotenv("passwords.env")
 
 
 
-def extensionChecker(hold_code):
-    extension = False
 
-    if hold_code == "":
-        return extension, None
-
-    if hold_code[0] == "#":
-        code = hold_code[1:6]
-        if "X" in code:
-            position = code.index("X")
-            hours_extended = int(code[position + 1:position+3], 16)
-            extension = True
-            return extension, hours_extended
-
-    extension = False
-    return extension, None
 
 
 
@@ -73,13 +58,12 @@ def main():
             continue
         if row[1] == "Checked-out":
             checked_out_time = services.timeExtractor(row[5])
-            extension = False
             temp_norm_hours = norm_hours
             if len(row) >= 7:
-                extension, hour_count = extensionChecker(row[6])
-            if extension:
-                if hour_count is not None:
-                    temp_norm_hours += hour_count
+                extension, hour_count = services.extensionChecker(row[6])
+                if extension:
+                    if hour_count is not None:
+                        temp_norm_hours += hour_count
 
             now = services.now_local()
             due = checked_out_time + timedelta(hours = temp_norm_hours)

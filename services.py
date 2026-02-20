@@ -142,6 +142,7 @@ def load_settings():
     osSettings["EmailChecking"] = int(osSettings["EmailChecking"]) == 1
     osSettings["MaxBikes"] = int(osSettings["MaxBikes"])
     osSettings["paymentRequirement"] = int(osSettings["paymentRequirement"]) == 1
+    osSettings["overdueHoldLength"] = int(osSettings["overdueHoldLength"])
 
 
 def timeExtractor(time):
@@ -350,3 +351,21 @@ def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "",
 
         return f"#{codeString:<6}{timeString}"
     return ""
+
+
+def extensionChecker(hold_code):
+    extension = False
+
+    if hold_code == "":
+        return extension, None
+
+    if hold_code[0] == "#":
+        code = hold_code[1:6]
+        if "X" in code:
+            position = code.index("X")
+            hours_extended = int(code[position + 1:position+3], 16)
+            extension = True
+            return extension, hours_extended
+
+    extension = False
+    return extension, None

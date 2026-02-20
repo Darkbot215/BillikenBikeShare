@@ -246,8 +246,22 @@ def checkin():
             "topText": services.siteResponse["Check-in"]["Error11"][0],
             "textbox": services.siteResponse["Check-in"]["Error11"][1]
         })
-    email = values[bike_idx][-1] #This works fine because the range is limited.
+    #This checks if there is an automatic hold on the account after x number of hours overdue
+    L_hold = False
+    if services.osSettings["overdueHoldLength"] != -1:
+        checked_out_time = services.timeExtractor(values[bike_idx][5])
+        norm_hours = services.osSettings["checkOutLength"]
+        if len(values[bike_idx]) >= 7:
+            extension, hour_count = services.extensionChecker(values[bike_idx][6])
+            if extension:
+                if hour_count is not None:
+                    norm_hours += hour_count
+        now = services.now_local()
+        holdLevelDue = checked_out_time + timedelta(hours=(norm_hours+services.osSettings["overdueHoldLength"]))
+        if now > holdLevelDue:
+            L_hold = True
 
+    email = values[bike_idx][4]
     email = email.strip().lower()
     # Find if email is in list
     RANGE_NAME = "UserLog!A2:G"
@@ -284,7 +298,7 @@ def checkin():
         target=checkin_async,
         args=(
             bike, bciw, issues, helmet, photo_path, email,
-            user_list, email_idx, bike_idx
+            user_list, email_idx, bike_idx, L_hold
         ),
         daemon=False
     ).start()
@@ -1754,20 +1768,25 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
 
 
 
-def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx):
+def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx, L_hold):
     try:
         now = services.now_local()
         if photo_path != "":
             contents = "<p> Bike #"+str(bike)+" is checked in as of: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p><p> Last user was: <br>"+email+"</p> Photo included:"
             services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
         #Here is where we can add an option for this to send issues
-        if bciw:
+        if L_hold:
+            services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
+            services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["AutomaticHold"][0],
+                       services.siteResponse["Emails"]["AutomaticHold"][1])
+            services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Automatic Hold on User Account","User "+email+" did not return their bike within the alloted time and now has a hold and is unable to check out bikes until an admin changes it")
+        elif bciw:
             services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["ForgottenReturn"][0]+str(bike),
                        services.siteResponse["Emails"]["ForgottenReturn"][1])
             services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
             services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
-        driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues)
+        driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues,L_hold)
 
         blank_issue_responses = {
                                     s.strip().lower()
