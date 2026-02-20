@@ -141,6 +141,7 @@ def load_settings():
     osSettings["TempBan"] = int(osSettings["TempBan"]) == 1
     osSettings["EmailChecking"] = int(osSettings["EmailChecking"]) == 1
     osSettings["MaxBikes"] = int(osSettings["MaxBikes"])
+    osSettings["paymentRequirement"] = int(osSettings["paymentRequirement"]) == 1
 
 
 def timeExtractor(time):
