@@ -439,11 +439,11 @@ def adminLogin(local_use = False, passCode= None):
 
     if admin_code[0] == None or admin_code[1] == None:
         if local_use:
-            return False, "This code has expired. Get a new one"
+            return False, "This code has expired. Get a new one <a href=\"/admin\">Click Here To Start Over</a>"
         return error("This code has expired. Get a new one <a href=\"/admin\">Click Here To Start Over</a>",401)
     if admin_code[0] != passCode:
         if local_use:
-            return False, "The code entered is incorrect or is no longer the code"
+            return False, "This is no longer the code <a href=\"/admin\">Click Here To Start Over</a>"
         return error("This is no longer the code <a href=\"/admin\">Click Here To Start Over</a>", 401)
     if admin_code[1] < services.now_local():
         if local_use:
