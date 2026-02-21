@@ -1337,6 +1337,48 @@ def addUserHold():
         "textbox": "The user: " + email + " has a hold placed on their account"
     })
 
+@app.route("/removeUserHold", methods = ["POST"])
+def removeUserHold():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    email = data.get("user_email","")
+    email = email.strip().lower()
+    RANGE_NAME = "UserLog!A2:G"
+
+    sheet = services.get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+    print(values)
+    user_list = [row[0] for row in values]
+    if email in user_list:
+        email_idx = user_list.index(email)
+    else:
+        return error("email is not in the userlist currently")
+    new_hold = services.holdUpdate(values[email_idx][4], holdToRemove="L",
+                                       tempBanTime=services.osSettings["tempTimeout"])
+    if "#" not in new_hold: #This part removes any manual holds
+        new_hold = ""
+
+    target = "UserLog!E" + str(email_idx + 2)
+    body = {
+        'values': [[new_hold]]
+    }
+    sheet = services.get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+    services.send_gmail(services.get_gmail_service(),email, services.siteResponse["Emails"]["LHoldRemoval"][0], services.siteResponse["Emails"]["LHoldRemoval"][1])
+    return jsonify({
+        "topText": "Success",
+        "textbox": "The user: " + email + " has the hold removed from their account"
+    })
+
 
 @app.route("/reloadSiteSettings", methods = ["POST"])
 def reloadSiteSettings():
