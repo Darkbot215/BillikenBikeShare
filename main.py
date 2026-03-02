@@ -35,14 +35,14 @@ SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
-
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
 
 
 services.load_settings()
+logger.info("Server started")
 
 
 admin_code = [None, None]
@@ -68,6 +68,8 @@ def bike_table():
         else:
             output_color = "#FFAC1C"
         bikelist.append({"id": row[0], "status": row[1], "color": output_color})
+
+    logger.debug("Returned Basic Bike Table")
     return jsonify({
         "time": current_time,
         "bike_list": bikelist,
@@ -97,7 +99,7 @@ def bike_status():
     if bikeid in bike_ids:
         idx = bike_ids.index(bikeid)
     else:
-        #That bike does not exist
+        logger.warning("User went for bike #"+str(bikeid)+" and it didn't exist")
         return (jsonify({
             "status": 2,
             "statusText": services.siteResponse["InitialPage"]["NotFound"][0],
@@ -106,12 +108,15 @@ def bike_status():
 
 
     if values[idx][1] == "Checked-in":
+        logger.debug("Bike #"+str(bikeid)+" was returned as Checked-in")
         return jsonify({
             "status": 0,
             "text1": services.siteResponse["InitialPage"]["Checked-in"][1],
             "helmetList": services.osSettings["HelmetList"]
         })
     elif values[idx][1] == "Checked-out":
+        logger.debug("Bike #"+str(bikeid)+" was returned as Checked-out")
+
         return jsonify({
             "status":1,
             "text1": services.siteResponse["InitialPage"]["Checked-out"][1],
@@ -119,6 +124,8 @@ def bike_status():
             "helmetList": services.osSettings["HelmetList"]
         })
     else:
+        logger.debug("Bike #"+str(bikeid)+" was returned as a different status")
+
         RANGE_NAME = "Simple Bike Summary!D"+str(idx+2) #Plus 2 for the title row not read, and that excel starts at 1 not 0
         sheet = services.get_sheets_service().spreadsheets()
         result = sheet.values().get(
@@ -157,6 +164,7 @@ def checkOut():
         #This email is not in user list. Now we need to do rigorous checking
         emailLegit = emailChecker(email)
         if emailLegit:
+            logger.info("User "+email+" was added to the email list for the first time")
             print('this email is legit')
             addUser(email)
             return jsonify({
@@ -165,6 +173,7 @@ def checkOut():
     })
 
         else:
+            logger.debug("Email "+email+ " did not meet the requirements to be added")
             return jsonify({
                 "topText": services.siteResponse["Check-out"]["BadEmail"][0],
                 "textbox": services.siteResponse["Check-out"]["BadEmail"][1]
