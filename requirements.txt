@@ -12,3 +12,5 @@ requests==2.32.5
 tzdata
 protobuf~=6.33.1
 email-validator~=2.3.0
+yagmail~=0.15.293
+Werkzeug~=3.1.3

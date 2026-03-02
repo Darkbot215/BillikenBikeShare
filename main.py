@@ -2,23 +2,30 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
 import json, base64
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
 import threading
-import mimetypes
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
 from datetime import datetime, date, timedelta
 from random import randint
 from dotenv import load_dotenv
-from zoneinfo import ZoneInfo
 from email_validator import validate_email, EmailNotValidError
 from urllib.parse import quote
 import services
+import logging
+import sys
+from werkzeug.middleware.proxy_fix import ProxyFix
 
+logging.basicConfig(
+    level=logging.INFO,  # change to DEBUG if needed
+    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
+logger = logging.getLogger(__name__)
+
+#logger.info("Server started")
+#logger.debug("User ID: %s", user_id)
+#logger.warning("Something suspicious happened")
+#logger.error("Something failed")
+#logger.exception("Crash happened")
 
 
 load_dotenv("passwords.env")
@@ -28,6 +35,9 @@ SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
+
+
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
 
