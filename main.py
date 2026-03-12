@@ -50,9 +50,15 @@ admin_code = [None, None]
 
 def log_memory():
     import psutil
-    mem = psutil.Process(os.getpid()).memory_info().rss / (1024**2)
-    logger.info(f"RAM usage: {mem:.1f} MB")
+    process = psutil.Process(os.getpid())
 
+    process_ram = process.memory_info().rss / (1024 ** 2)
+    system = psutil.virtual_memory()
+
+    logger.info(
+        f"Process RAM: {process_ram:.1f} MB | "
+        f"System RAM: {system.used / (1024 ** 2):.1f}/{system.total / (1024 ** 2):.1f} MB"
+    )
 @app.route("/table", methods=["GET"])
 def bike_table():
     RANGE_NAME = "Simple Bike Summary!A2:B"
