@@ -12,6 +12,7 @@ import services
 import logging
 import sys
 from werkzeug.middleware.proxy_fix import ProxyFix
+from PIL import Image
 
 logging.basicConfig(
     level=logging.INFO,  # change to DEBUG if needed
@@ -59,6 +60,20 @@ def log_memory():
         f"Process RAM: {process_ram:.1f} MB | "
         f"System RAM: {system.used / (1024 ** 2):.1f}/{system.total / (1024 ** 2):.1f} MB"
     )
+
+
+def compress_photo(input_path, output_path, max_size=(1920, 1920), quality=70):
+    """
+    Resize and compress photo.
+    - max_size: max width/height
+    - quality: JPEG quality
+    """
+    img = Image.open(input_path)
+    img.thumbnail(max_size)  # maintains aspect ratio
+    img.save(output_path, format="JPEG", quality=quality)
+    img.close()
+    return output_path
+
 @app.route("/table", methods=["GET"])
 def bike_table():
     RANGE_NAME = "Simple Bike Summary!A2:B"
@@ -332,9 +347,13 @@ def checkin():
     photo_path = ""
     try:
         if photo:
-            filename = photo.filename
-            photo_path = f"/tmp/{filename}"
-            photo.save(photo_path)  # or wherever
+            tmp_path = f"/tmp/{photo.filename}"
+            photo.save(tmp_path)
+            compressed_path = f"/tmp/compressed_{photo.filename}"
+            compress_photo(tmp_path, compressed_path)
+            photo_path = compressed_path
+            os.remove(tmp_path)  # remove original large upload
+
     except Exception as e:
         logger.error("User: "+email+" bike id #" + str(bike)+" was able to submit without a photo")
 

@@ -76,7 +76,6 @@ def load_settings():
     for sheet in spreadsheet["sheets"]:
         props = sheet["properties"]
         bike_sheet_dict.update({props["title"]: props["sheetId"]})
-        print(props["title"], props["sheetId"])
     siteResponse.clear()
     RANGE_NAME = "SiteResponseMessages!A1:E"
 
