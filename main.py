@@ -35,7 +35,7 @@ SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=3, x_proto=1)
 
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
@@ -47,15 +47,6 @@ logger.info("Server started")
 
 admin_code = [None, None]
 
-@app.route("/debug-ip")
-def debug_ip():
-    from flask import request
-    return {
-        "remote_addr": request.remote_addr,
-        "cf_connecting_ip": request.headers.get("CF-Connecting-IP"),
-        "x_forwarded_for": request.headers.get("X-Forwarded-For"),
-        "access_route": request.access_route
-    }
 
 @app.route("/table", methods=["GET"])
 def bike_table():
@@ -318,6 +309,8 @@ def checkin():
         email_idx = user_list.index(email)
         print('this user is on the list')
     else:
+        logger.error("User: "+email+"was listed as having a bike checked out but couldn't be found on the userlist. This shouldn't happen")
+
         #The user who checked out the bike is not on the user list
         return jsonify({
             "topText": services.siteResponse["Check-in"]["Error12"][0],
@@ -332,6 +325,8 @@ def checkin():
             photo_path = f"/tmp/{filename}"
             photo.save(photo_path)  # or wherever
     except Exception as e:
+        logger.error("User: "+email+" bike id #" + str(bike)+" was able to submit without a photo")
+
         print("Error in checkout_async:", e)
 
     threading.Thread(
@@ -343,6 +338,7 @@ def checkin():
         daemon=False
     ).start()
 
+    logger.info("User: " + email + " bike id #" + str(bike) + " bike was checked in")
     return jsonify({
         "topText": services.siteResponse["Check-in"]["Success"][0],
         "textbox": services.siteResponse["Check-in"]["Success"][1]
@@ -369,6 +365,7 @@ def verifyUser():
     if email in user_list:
         email_idx = user_list.index(email)
     else:
+        logger.info("User with email: "+email+" tried to verify themself but they were not in the system.")
         return jsonify({
         "topText": services.siteResponse["VerifyUser"]["NotInSystem"][0],
         "textbox": services.siteResponse["VerifyUser"]["NotInSystem"][1]
@@ -378,6 +375,8 @@ def verifyUser():
     try:
         ver_time = user_info[6]
     except:
+        logger.info("User with email: "+email+" tried to verify themself but they were already verified.")
+
         return jsonify({
         "topText": services.siteResponse["VerifyUser"]["AlreadyDone"][0],
         "textbox": services.siteResponse["VerifyUser"]["AlreadyDone"][1]
@@ -399,6 +398,8 @@ def verifyUser():
             body={'requests': [requests]}
         ).execute()
         addUser(email)
+        logger.info("User with email: "+email+" has been given a new code to verify themselves.")
+
         return jsonify({
             "topText": services.siteResponse["VerifyUser"]["NewCode"][0],
             "textbox": services.siteResponse["VerifyUser"]["NewCode"][1]
@@ -416,11 +417,15 @@ def verifyUser():
                 range="UserLog!G"+str(email_idx+2)
             ).execute()
 
+            logger.info("User with email: "+email+" was verified.")
+
             return jsonify({
                 "topText": services.siteResponse["VerifyUser"]["Success"][0],
                 "textbox": services.siteResponse["VerifyUser"]["Success"][1] +"<a href=\"/\">Billiken Bikeshare Homepage </a>"
             })
         else:
+            logger.info("User with email: "+email+" entered the wrong code.")
+
             return jsonify({
                 "topText": services.siteResponse["VerifyUser"]["Wrong"][0],
                 "textbox": services.siteResponse["VerifyUser"]["Wrong"][1]
@@ -441,6 +446,8 @@ def verifyUser():
             body={'requests': [requests]}
         ).execute()
         addUser(email)
+        logger.info("User with email: " + email + " was too slow to be verified and was given a new code.")
+
         return jsonify({
             "topText": services.siteResponse["VerifyUser"]["TooSlow"][0],
             "textbox": services.siteResponse["VerifyUser"]["TooSlow"][1]
