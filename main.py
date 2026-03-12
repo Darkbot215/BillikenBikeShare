@@ -45,8 +45,8 @@ services.load_settings()
 logger.info("Server started")
 
 
-#admin_code = [3, services.now_local()+timedelta(days=2)]
-admin_code = [None, None]
+admin_code = [3, services.now_local()+timedelta(days=2)]
+#admin_code = [None, None]
 
 def log_memory():
     import psutil
@@ -1380,7 +1380,6 @@ def addUserHold():
         return error("The email you entered is not currently in the user list")
     new_hold = services.holdUpdate(values[email_idx][4], holdToAdd="L",
                                        tempBanTime=services.osSettings["tempTimeout"])
-
     target = "UserLog!E" + str(email_idx + 2)
     body = {
         'values': [[new_hold]]
@@ -1389,6 +1388,16 @@ def addUserHold():
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
+    if email_body != "":
+        target = "UserLog!H" + str(email_idx + 2)
+        body = {
+            'values': [[email_body]]
+        }
+        sheet = services.get_sheets_service().spreadsheets()
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID, range=target,
+            valueInputOption="USER_ENTERED", body=body).execute()
+
     services.send_gmail(services.get_gmail_service(),email, services.siteResponse["Emails"]["ManualHold"][0], services.siteResponse["Emails"]["ManualHold"][1] + email_body + services.siteResponse["Emails"]["ManualHold"][2])
     return jsonify({
         "topText": "Success",
@@ -1890,8 +1899,12 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
 
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx, L_hold):
+    print('top')
+    log_memory()
     try:
         now = services.now_local()
+        print('mid')
+        log_memory()
         if photo_path != "":
             contents = "<p> Bike #"+str(bike)+" is checked in as of: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p><p> Last user was: <br>"+email+"</p> Photo included:"
             services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
@@ -1907,8 +1920,11 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
             services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
+        print('pig')
+        log_memory()
         driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues,L_hold)
-
+        print('cow')
+        log_memory()
         blank_issue_responses = {
                                     s.strip().lower()
                                     for s in services.osSettings["blankResponses"]
@@ -1924,6 +1940,7 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
                 services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
+    print('oink')
     log_memory()
 
 
