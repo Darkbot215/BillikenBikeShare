@@ -544,7 +544,7 @@ def generateAdminCode():
             email_idx = user_list.index(email)
         else:
             return False
-        target = "UserLog!F" + str(email_idx + 1)+":G"+str(email_idx+1)
+        target = "UserLog!F" + str(email_idx + 2)+":G"+str(email_idx+2)
         body = {'values': [[admin_code[0],admin_code[1].strftime("%m/%d/%Y %H:%M:%S")]]}
         sheet = services.get_sheets_service().spreadsheets()
         sheet.values().update(
