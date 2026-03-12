@@ -35,7 +35,7 @@ SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=3, x_proto=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
 
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
@@ -280,6 +280,8 @@ def checkin():
     if bike in bike_list:
         bike_idx = bike_list.index(bike)
     else:
+        logger.error("Bike #"+str(bike)+" was attempted to be returned the server was unable to find the bike. This shouldn't happen")
+
         return jsonify({
             "topText": services.siteResponse["Check-in"]["Error11"][0],
             "textbox": services.siteResponse["Check-in"]["Error11"][1]
