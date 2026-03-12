@@ -35,7 +35,7 @@ SPREADSHEET_ID = os.environ["SPREADSHEET_ID"]
 
 
 app = Flask(__name__)
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=1)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=3, x_proto=1)
 
 CORS(app)  # allows your HTML file to communicate with the server
 #TEMP VARIABLES TO BE LOADED AS OS SETTINGS
@@ -46,6 +46,16 @@ logger.info("Server started")
 
 
 admin_code = [None, None]
+
+@app.route("/debug-ip")
+def debug_ip():
+    from flask import request
+    return {
+        "remote_addr": request.remote_addr,
+        "cf_connecting_ip": request.headers.get("CF-Connecting-IP"),
+        "x_forwarded_for": request.headers.get("X-Forwarded-For"),
+        "access_route": request.access_route
+    }
 
 @app.route("/table", methods=["GET"])
 def bike_table():
@@ -183,6 +193,8 @@ def checkOut():
     user_info = values[email_idx]
     verification_time = user_info[6] if len(user_info) > 6 else None
     if verification_time:
+        logger.info("User " + email + " was rejected for not being verified")
+
         return jsonify({
             "topText": services.siteResponse["Check-out"]["NotYetVerified"][0],
             "textbox": services.siteResponse["Check-out"]["NotYetVerified"][1]
@@ -193,6 +205,8 @@ def checkOut():
         #This is a scuffed dues based hold. A permanent one should be added
     hold, output = holdChecker(hold_status) #EDIT MAX AMOUNT OF BIKES CHECKED OUT
     if hold:
+        logger.info("User " + email + " was rejected for having a hold with notes: "+output[1])
+
         return jsonify({
             "topText": output[0],
             "textbox": output[1]
@@ -220,14 +234,19 @@ def checkOut():
                     services.siteResponse["Emails"]["Unlocking"][2]
             )
             services.send_gmail(services.get_gmail_service(),email,services.siteResponse["Emails"]["Unlocking"][0] + str(values[bike_idx][2]),message_body)
+            logger.info("User "+email+" Checked out bike #"+str(bike))
             return jsonify({
                 "topText": services.siteResponse["Check-out"]["Success"][0],
                 "textbox": services.siteResponse["Check-out"]["Success"][1]
             })
+        logger.info("User " + email + " Failed to check out bike #" + str(bike) +" most likely someone else checked the bike out while they were using it form")
+
         return jsonify({
                 "topText": services.siteResponse["Check-out"]["Fail"][0],
                 "textbox": services.siteResponse["Check-out"]["Fail"][1]
         })
+    logger.error("User " + email + " was able to run check-out script for bike #"+ str(bike)+" but the server was unable to find the bike. This shouldn't happen")
+
     return jsonify({
         "topText": services.siteResponse["Check-out"]["Error14"][0],
         "textbox": services.siteResponse["Check-out"]["Error14"][1]
