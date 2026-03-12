@@ -1918,11 +1918,13 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
                 services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkout_async:", e)
+    log_memory()
 
 
 
 @app.route("/")
 def index():
+    log_memory()
     return render_template("cow.html")
 
 @app.route("/admin")
@@ -1932,6 +1934,7 @@ def admin():
 
 @app.route("/health", methods=["GET"])
 def health():
+    log_memory()
     return "ok", 200
 
 if __name__ == "__main__":
