@@ -1,21 +1,6 @@
-from locale import format_string
-
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
 import os
-import json, base64
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-import threading
-import mimetypes
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-from datetime import datetime, date, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
-from zoneinfo import ZoneInfo
 import services
 
 load_dotenv("passwords.env")

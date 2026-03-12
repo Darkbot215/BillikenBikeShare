@@ -45,8 +45,13 @@ services.load_settings()
 logger.info("Server started")
 
 
+#admin_code = [3, services.now_local()+timedelta(days=2)]
 admin_code = [None, None]
 
+def log_memory():
+    import psutil
+    mem = psutil.Process(os.getpid()).memory_info().rss / (1024**2)
+    logger.info(f"RAM usage: {mem:.1f} MB")
 
 @app.route("/table", methods=["GET"])
 def bike_table():
@@ -737,7 +742,7 @@ def addPaidUser():
     if email in user_list:
         email_idx = user_list.index(email)
     else:
-        return error("email is not in the userlist currently")
+        return error("The email you entered is not currently in the user list")
     new_hold = services.holdUpdate(values[email_idx][4], holdToRemove="P", tempBanTime = services.osSettings["tempTimeout"])
     target = "UserLog!D"+str(email_idx+2)+":E"+str(email_idx+2)
     body = {
@@ -774,7 +779,7 @@ def removePaidUser():
     if email in user_list:
         email_idx = user_list.index(email)
     else:
-        return error("email is not in the userlist currently")
+        return error("The email you entered is not currently in the user list")
     if int(values[email_idx][1]) >= 1:
         new_hold = services.holdUpdate(values[email_idx][4], holdToAdd="P", tempBanTime = services.osSettings["tempTimeout"])
     else:
@@ -816,11 +821,11 @@ def giveTimeExtension():
         if len(row) > 4 and row[4] == email
     ]
     if not email_idxs:
-        return error("This user is not currently checking out a bike")
+        return error("This user is not currently checking out a bike. They must be to get a time extension")
     try:
         ext_time = round(float(data.get("extension_length", "")))
     except:
-        return error("You did not enter a whole number of hours")
+        return error("You must enter a whole number of hours")
 
     for indexes in email_idxs:
         row = values[indexes]
@@ -868,7 +873,7 @@ def adminCheckoutBike():
     if email in user_list:
         email_idx = user_list.index(email)
     else:
-        return error(email+" which is listed as 1st admin is not in the userlist. This is an error blocking a mass check-out. Orignally this was supposed to be sluonthemove@slu.edu")
+        return error(email+" which is listed as 1st admin is not in the userlist. This is an error blocking a mass check-out. Originally this was supposed to be sluonthemove@slu.edu. Add that user to the userlist manually on the spreadsheet")
     user_info = values[email_idx]
     RANGE_NAME = "Simple Bike Summary!A2:C"
 
@@ -1021,7 +1026,7 @@ def setNewBikeStatus():
     new_notes = data.get("new_notes", "")
     dropdownVal = data.get("dropdownVal", "")
     if new_status.strip() == "" or int(dropdownVal) == -1:
-        return error("Did not enter a full status or select a bike")
+        return error("You did not enter a full status or select a bike")
     RANGE_NAME = "Simple Bike Summary!A2:D"
 
     sheet = services.get_sheets_service().spreadsheets()
@@ -1101,10 +1106,10 @@ def addBikeToSystem():
     try:
         bikeid = int(bikeid)
         if bikeid <= 0:
-            return error("The bikeid entered was not a whole number")
+            return error("The bikeid entered must be a whole number")
 
     except:
-        return error("The bikeid entered was not a whole number")
+        return error("The bikeid entered must be a whole number")
     RANGE_NAME = "Simple Bike Summary!A2:D"
 
     sheet = services.get_sheets_service().spreadsheets()
@@ -1115,7 +1120,7 @@ def addBikeToSystem():
     values = result.get("values", "")
     bike_ids = [int(row[0]) for row in values]
     if bikeid in bike_ids:
-        return error("This bikeid is already being used in the system")
+        return error("That bikeid is already being used in the system")
 
     bike_ids.append(bikeid)
     bike_ids.sort()
@@ -1231,7 +1236,7 @@ def addHelmets():
     if len(helmets) > 0:
         new_helmets = sorted(int(x.strip()) for x in helmets.split(","))
     else:
-        return error("no helmets were entered in the box to be added")
+        return error("No helmets were entered in the textbox")
     new_helmets.extend( services.osSettings["HelmetList"])
     new_helmets.sort()
     new_helmets = list(dict.fromkeys(new_helmets))
@@ -1264,7 +1269,7 @@ def removeHelmets():
     if len(helmets) > 0:
         skip_helmets = sorted(int(x.strip()) for x in helmets.split(","))
     else:
-        return error("no helmets were entered in the box to be removed")
+        return error("no helmets were entered in the textbox")
     new_helmets = []
     removed_count = 0
     for helm in services.osSettings["HelmetList"]:
@@ -1366,7 +1371,7 @@ def addUserHold():
     if email in user_list:
         email_idx = user_list.index(email)
     else:
-        return error("email is not in the userlist currently")
+        return error("The email you entered is not currently in the user list")
     new_hold = services.holdUpdate(values[email_idx][4], holdToAdd="L",
                                        tempBanTime=services.osSettings["tempTimeout"])
 
@@ -1406,7 +1411,7 @@ def removeUserHold():
     if email in user_list:
         email_idx = user_list.index(email)
     else:
-        return error("email is not in the userlist currently")
+        return error("The email you entered is not currently in the user list")
     new_hold = services.holdUpdate(values[email_idx][4], holdToRemove="L",
                                        tempBanTime=services.osSettings["tempTimeout"])
     if "#" not in new_hold: #This part removes any manual holds

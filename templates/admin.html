@@ -539,7 +539,12 @@
 
             }).catch(err => {
                 overlay.style.display = "none";
-                document.getElementById("textboxA").innerHTML = `ERROR with login: ${err.message}`;
+                if (err.message.includes("<")) {
+                    document.getElementById("textboxA").innerHTML =
+                        `<b style="color:red">ERROR:</b> ${err.message}`;
+                } else {
+                    alert(`ERROR: ${err.message}`)
+                }
                 console.error(err);
             });
         }
@@ -588,7 +593,12 @@
                 document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
             }).catch(err => {
                 overlay.style.display = "none";
-                document.getElementById("textboxA").innerHTML = `ERROR with login: ${err.message}`;
+                if (err.message.includes("<")) {
+                    document.getElementById("textboxA").innerHTML =
+                        `<b style="color:red">ERROR:</b> ${err.message}`;
+                } else {
+                    alert(`ERROR: ${err.message}`)
+                }
                 console.error(err);
             });
         }
@@ -625,7 +635,12 @@
                 document.getElementById("bikeTable2").style.display = "table"; // or "block" if you prefer
             }).catch(err => {
                 overlay.style.display = "none";
-                document.getElementById("textboxA").innerHTML = `ERROR with login: ${err.message}`;
+                if (err.message.includes("<")) {
+                    document.getElementById("textboxA").innerHTML =
+                        `<b style="color:red">ERROR:</b> ${err.message}`;
+                } else {
+                    alert(`ERROR: ${err.message}`)
+                }
                 console.error(err);
             });
             document.getElementById("buttonA").onclick = generateLockCodes;
@@ -663,7 +678,12 @@
                 document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
             }).catch(err => {
                 overlay.style.display = "none";
-                document.getElementById("textboxA").innerHTML = `ERROR with login: ${err.message}`;
+                if (err.message.includes("<")) {
+                    document.getElementById("textboxA").innerHTML =
+                        `<b style="color:red">ERROR:</b> ${err.message}`;
+                } else {
+                    alert(`ERROR: ${err.message}`)
+                }
                 console.error(err);
             });
         }
@@ -704,7 +724,12 @@
                 document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
             }).catch(err => {
                 overlay.style.display = "none";
-                document.getElementById("textboxA").innerHMTL = `ERROR with login: ${err.message}`;
+                if (err.message.includes("<")) {
+                    document.getElementById("textboxA").innerHTML =
+                        `<b style="color:red">ERROR:</b> ${err.message}`;
+                } else {
+                    alert(`ERROR: ${err.message}`)
+                }
                 console.error(err);
             });
         }
@@ -760,7 +785,12 @@
                 document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
             }).catch(err => {
                 overlay.style.display = "none";
-                document.getElementById("textboxA").innerHMTL = `ERROR with login: ${err.message}`;
+                if (err.message.includes("<")) {
+                    document.getElementById("textboxA").innerHTML =
+                        `<b style="color:red">ERROR:</b> ${err.message}`;
+                } else {
+                    alert(`ERROR: ${err.message}`)
+                }
                 console.error(err);
             });
         }

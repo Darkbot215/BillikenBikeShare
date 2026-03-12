@@ -1,22 +1,16 @@
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
 import os
 import json, base64
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
-import threading
 import mimetypes
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, date, timedelta
-from random import randint
 from dotenv import load_dotenv
 from zoneinfo import ZoneInfo
-from email_validator import validate_email, EmailNotValidError
-from urllib.parse import quote
 
 
 
@@ -48,11 +42,11 @@ def get_credentials():
 creds = get_credentials()
 
 def get_sheets_service():
-    return build("sheets", "v4", credentials=creds["drive"])
+    return build("sheets", "v4", credentials=creds["drive"], cache_discovery=False)
 def get_drive_service():
-    return build("drive", "v3", credentials=creds["drive"])
+    return build("drive", "v3", credentials=creds["drive"], cache_discovery=False)
 def get_gmail_service():
-    return build("gmail", "v1", credentials=creds["gmail"])
+    return build("gmail", "v1", credentials=creds["gmail"], cache_discovery=False)
 # ------------------------------------
 # GOOGLE DRIVE CLIENT
 # ------------------------------------
