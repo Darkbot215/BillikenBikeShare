@@ -182,7 +182,6 @@ def checkOut():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
