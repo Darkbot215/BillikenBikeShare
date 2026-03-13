@@ -393,7 +393,6 @@ def extensionUpdate(extension_code, extensionToAdd = "", extensionToRemove = "",
         if item == "X" and codeDict[item] > 0:
             codeString = codeString+item+ f"{codeDict[item]:X}"
         elif item == "M":
-            print(codeDict[item])
             timeString = codeDict[item].strftime("%m/%d/%Y %H:%M:%S")
             codeString = codeString+item
 

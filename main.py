@@ -118,7 +118,6 @@ def bike_status():
     values = result.get("values", [])
     try:
         bike_ids = [int(row[0]) for row in values]
-        print(bike_ids)
     except:
         pass
         #EMAIL ERROR CODE TO SLU EMAIL CONSIDER ADDING ADMINLIST
@@ -185,13 +184,11 @@ def checkOut():
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
-        print('this user is on the list')
     else:
         #This email is not in user list. Now we need to do rigorous checking
         emailLegit = emailChecker(email)
         if emailLegit:
             logger.info("User "+email+" was added to the email list for the first time")
-            print('this email is legit')
             addUser(email)
             return jsonify({
         "topText": services.siteResponse["Check-out"]["FirstTime"][0],
@@ -328,11 +325,9 @@ def checkin():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
-        print('this user is on the list')
     else:
         logger.error("User: "+email+"was listed as having a bike checked out but couldn't be found on the userlist. This shouldn't happen")
 
@@ -389,7 +384,6 @@ def verifyUser():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -410,7 +404,6 @@ def verifyUser():
         "topText": services.siteResponse["VerifyUser"]["AlreadyDone"][0],
         "textbox": services.siteResponse["VerifyUser"]["AlreadyDone"][1]
     })
-    print(newCode)
     if newCode:
         requests = [{
             "deleteDimension": {
@@ -440,7 +433,6 @@ def verifyUser():
         #We are within time.
         if str(user_info[5]) == str(verificationCode.strip()):
         #Success. This account can be verified
-            print(email_idx+2)
             sheet.values().clear(
                 spreadsheetId=SPREADSHEET_ID,
                 range="UserLog!G"+str(email_idx+2)
@@ -509,7 +501,6 @@ def adminLogin(local_use = False, passCode= None):
             range=RANGE_NAME
         ).execute()
         values = result.get("values", "")
-        print(values)
         user_list = [row[0] for row in values]
         if email in user_list:
             email_idx = user_list.index(email)
@@ -567,7 +558,6 @@ def generateAdminCode():
             range=RANGE_NAME
         ).execute()
         values = result.get("values", "")
-        print(values)
         user_list = [row[0] for row in values]
         if email in user_list:
             email_idx = user_list.index(email)
@@ -614,7 +604,6 @@ def allLockCodes():
         else:
             output_color = "#FFAC1C"
         bikelist.append({"id": row[0], "status": row[1], "color": output_color, "code":row[2]})
-    print(bikelist)
     return jsonify({
         "time": current_time,
         "bike_list": bikelist,
@@ -670,7 +659,6 @@ def generateLockCodes():
             new_color_output = "#6FCBF7"
             old_color_output = "#6FCBF7"
         bikelist.append({"id": row[0], "oldCode": old_codes[idx],  "newCode": new_codes[idx], "oldColor": old_color_output,"newColor":new_color_output})
-    print(bikelist)
     return jsonify({
         "time": current_time,
         "bike_list": bikelist,
@@ -686,7 +674,6 @@ def addUserWithoutVerification():
 
     email = data.get("user_email", "")
     email = email.strip().lower()
-    print(email)
     if not emailChecker(email, False):
         return error("The email sent was invalid")
 
@@ -698,7 +685,6 @@ def addUserWithoutVerification():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -722,7 +708,6 @@ def addUserWithoutVerification():
     body = {
         'values': [[""]]
     }
-    print(body)
     sheet = services.get_sheets_service().spreadsheets()
     sheet.values().update(
         spreadsheetId=SPREADSHEET_ID, range=target,
@@ -761,7 +746,6 @@ def addPaidUser():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -798,7 +782,6 @@ def removePaidUser():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -838,7 +821,6 @@ def giveTimeExtension():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     email_idxs = [
         i
         for i, row in enumerate(values)
@@ -891,7 +873,6 @@ def adminCheckoutBike():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     email = services.osSettings["AdminEmails"][0]
     user_list = [row[0] for row in values]
     if email in user_list:
@@ -934,7 +915,6 @@ def adminCheckoutBike():
         else:
             checkout_color = "#FFFFFF"
         bikelist.append({"id": row[0], "status": row[1], "color": output_color, "code": row[2], "code_color":checkout_color})
-    print(bikelist)
     return jsonify({
         "topText": "Bikes Successfuly checked out",
         "textbox": "These bikes: "+str(bikes_checked_out)+" have been checked out",
@@ -980,7 +960,6 @@ def forceCheckinBike():
         if int(row[0]) in check_in_bikes:
             bikes_checked_in.append(int(row[0]))
             bike_values[idx][1] = "Checked-in"
-            print(row)
             if len(row) > 4:
                 now = services.now_local()
                 L_hold = False
@@ -1019,7 +998,6 @@ def forceCheckinBike():
             else:
                 services.send_gmail(services.get_gmail_service(), services.osSettings["AdminEmails"], "Bike #" + str(row[0]) + " Force Check-in",
                            "The prior user was not able to be found in sheets and an Admin has now checked-in the bike")
-                print(row[0])
                 driveCheckin(["N/A"], -1, int(row[0]), idx, -1, "")
 
     bikelist = []
@@ -1032,7 +1010,6 @@ def forceCheckinBike():
             output_color = "#FFAC1C"
         bikelist.append(
             {"id": row[0], "status": row[1], "color": output_color, "code": row[2]})
-    print(bikelist)
     return jsonify({
         "topText": "Bikes Successfully checked in",
         "textbox": "These bikes: " + str(bikes_checked_in) + " have been checked in",
@@ -1255,7 +1232,6 @@ def addHelmets():
     if not good_code:
         return error(errormessage)
     helmets = data.get("helmetList", "")
-    print(helmets)
     skips = []
     if len(helmets) > 0:
         new_helmets = sorted(int(x.strip()) for x in helmets.split(","))
@@ -1288,7 +1264,6 @@ def removeHelmets():
     if not good_code:
         return error(errormessage)
     helmets = data.get("helmetList", "")
-    print(helmets)
     skip_helmets = []
     if len(helmets) > 0:
         skip_helmets = sorted(int(x.strip()) for x in helmets.split(","))
@@ -1366,7 +1341,6 @@ def lastBikeUsers():
         last_user = value_ranges[idx].get('values', [])
 
         bikelist.append({"id": row[0], "status": row[1], "color": output_color, "user": last_user, "user_color": user_color})
-    print(bikelist)
     return jsonify({
         "time": current_time,
         "bike_list": bikelist,
@@ -1390,7 +1364,6 @@ def addUserHold():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -1439,7 +1412,6 @@ def removeUserHold():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    print(values)
     user_list = [row[0] for row in values]
     if email in user_list:
         email_idx = user_list.index(email)
@@ -1926,12 +1898,8 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
 
 
 def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_info, email_idx, bike_idx, L_hold):
-    print('top')
-    log_memory()
     try:
         now = services.now_local()
-        print('mid')
-        log_memory()
         if photo_path != "":
             contents = "<p> Bike #"+str(bike)+" is checked in as of: <br>"+now.strftime("%m/%d/%Y %H:%M:%S") +".</p><p> Last user was: <br>"+email+"</p> Photo included:"
             services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"][0],"Bikeshare Return Photo Bike #"+str(bike), contents, photo_path)
@@ -1947,11 +1915,7 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_info, emai
             services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Forgotten Bike Return #"+str(bike),"User "+email+" did not return their bike and it was marked as returned by another user")
         else:
             services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
-        print('pig')
-        log_memory()
         driveCheckin(user_info,email_idx,bike,bike_idx,helmet,issues,L_hold)
-        print('cow')
-        log_memory()
         blank_issue_responses = {
                                     s.strip().lower()
                                     for s in services.osSettings["blankResponses"]
@@ -1967,8 +1931,7 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_info, emai
                 services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
         print("Error in checkin_async:", e)
-    print('oink')
-    log_memory()
+
 
 
 
@@ -1979,6 +1942,7 @@ def index():
 
 @app.route("/admin")
 def admin():
+    log_memory()
     return render_template("admin.html")
 
 
