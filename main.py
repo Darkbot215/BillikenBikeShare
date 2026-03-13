@@ -363,7 +363,7 @@ def checkin():
         target=checkin_async,
         args=(
             bike, bciw, issues, helmet, photo_path, email,
-            user_list, email_idx, bike_idx, L_hold
+            user_list[email_idx], email_idx, bike_idx, L_hold
         ),
         daemon=False
     ).start()
@@ -1917,7 +1917,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
 
 
 
-def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, email_idx, bike_idx, L_hold):
+def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_info, email_idx, bike_idx, L_hold):
     print('top')
     log_memory()
     try:
@@ -1941,7 +1941,7 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_list, emai
             services.send_gmail(services.get_gmail_service(),email,"Bike #"+str(bike)+services.siteResponse["Emails"]["Return"][0],services.siteResponse["Emails"]["Return"][1])
         print('pig')
         log_memory()
-        driveCheckin(user_list[email_idx],email_idx,bike,bike_idx,helmet,issues,L_hold)
+        driveCheckin(user_info,email_idx,bike,bike_idx,helmet,issues,L_hold)
         print('cow')
         log_memory()
         blank_issue_responses = {
