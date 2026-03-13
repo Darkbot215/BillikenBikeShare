@@ -219,7 +219,6 @@ def checkOut():
     hold, output = holdChecker(hold_status) #EDIT MAX AMOUNT OF BIKES CHECKED OUT
     if hold:
         logger.info("User " + email + " was rejected for having a hold with notes: "+output[1])
-
         return jsonify({
             "topText": output[0],
             "textbox": output[1]
@@ -1544,8 +1543,8 @@ def holdChecker(hold_code, max_amount = services.osSettings["MaxBikes"], tempBan
             temp = services.timeExtractor(hold_time)
             if temp > now:
                 hold = tempBan
-                topText = services.siteResponse["Check-out"]["Fail"][0]
-                textbox = services.siteResponse["Check-out"]["Fail"][1]+" You must wait " + str(int((temp - now).seconds / 60) + 1) + " minutes to check out a new bike"
+                topText = services.siteResponse["Check-out"]["T-hold"][0]
+                textbox = services.siteResponse["Check-out"]["T-hold"][1]+" You must wait " + str(int((temp - now).seconds / 60) + 1) + " minutes to check out a new bike"
             # Could add an else here to delete it, but that is a later problem
         if "U" in code:
             position = code.index("U")
