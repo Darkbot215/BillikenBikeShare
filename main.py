@@ -1759,7 +1759,10 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
 
     sheet.batchUpdate(
         spreadsheetId=SPREADSHEET_ID,
-        body={'requests': [requests]}
+        body={'requests': requests},
+        includeSpreadsheetInResponse=False,
+        responseIncludeGridData=False
+
     ).execute()
     
 def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_long_term = False):
@@ -1959,7 +1962,7 @@ def checkin_async(bike, bciw, issues, helmet, photo_path, email, user_info, emai
             else:
                 services.send_gmail(services.get_gmail_service(),services.osSettings["AdminEmails"],"Reported Issue with Bike #"+str(bike),contents+ "Photo was not included")
     except Exception as e:
-        print("Error in checkout_async:", e)
+        print("Error in checkin_async:", e)
     print('oink')
     log_memory()
 
