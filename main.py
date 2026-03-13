@@ -1759,11 +1759,14 @@ def driveCheckout(user_info,email_idx, bikeid, bike_idx, helmetid):
 
     sheet.batchUpdate(
         spreadsheetId=SPREADSHEET_ID,
-        body={'requests': requests},
-        includeSpreadsheetInResponse=False,
-        responseIncludeGridData=False
-
+        body={
+            'requests': requests,
+            'includeSpreadsheetInResponse': False,
+            'responseIncludeGridData': False
+        }
     ).execute()
+
+
     
 def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_long_term = False):
     sheet = services.get_sheets_service().spreadsheets()
@@ -1914,9 +1917,11 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
 
     sheet.batchUpdate(
         spreadsheetId=SPREADSHEET_ID,
-        body={'requests': requests},
-        includeSpreadsheetInResponse=False,
-        responseIncludeGridData=False
+        body={
+            'requests': requests,
+            'includeSpreadsheetInResponse': False,
+            'responseIncludeGridData': False
+        }
     ).execute()
 
 
