@@ -1912,7 +1912,7 @@ def driveCheckin(user_info,email_idx, bikeid, bike_idx, helmetid, notes, hold_lo
 
     sheet.batchUpdate(
         spreadsheetId=SPREADSHEET_ID,
-        body={'requests': [requests]}
+        body={'requests': requests}
     ).execute()
 
 
