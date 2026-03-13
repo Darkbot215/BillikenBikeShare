@@ -45,12 +45,45 @@ def get_credentials():
 
 creds = get_credentials()
 
+_sheets_service = None
+_drive_service = None
+_gmail_service = None
+
+
 def get_sheets_service():
-    return build("sheets", "v4", credentials=creds["drive"], cache_discovery=False)
+    global _sheets_service
+    if _sheets_service is None:
+        _sheets_service = build(
+            "sheets",
+            "v4",
+            credentials=creds["drive"],
+            cache_discovery=False
+        )
+    return _sheets_service
+
+
 def get_drive_service():
-    return build("drive", "v3", credentials=creds["drive"], cache_discovery=False)
+    global _drive_service
+    if _drive_service is None:
+        _drive_service = build(
+            "drive",
+            "v3",
+            credentials=creds["drive"],
+            cache_discovery=False
+        )
+    return _drive_service
+
+
 def get_gmail_service():
-    return build("gmail", "v1", credentials=creds["gmail"], cache_discovery=False)
+    global _gmail_service
+    if _gmail_service is None:
+        _gmail_service = build(
+            "gmail",
+            "v1",
+            credentials=creds["gmail"],
+            cache_discovery=False
+        )
+    return _gmail_service
 # ------------------------------------
 # GOOGLE DRIVE CLIENT
 # ------------------------------------
