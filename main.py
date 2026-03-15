@@ -1120,7 +1120,7 @@ def addBikeToSystem():
     values = result.get("values", "")
     bike_ids = [int(row[0]) for row in values]
     if bikeid in bike_ids:
-        return error("That bikeid is already being used in the system")
+        return error("That bike id number is already being used in the system")
 
     bike_ids.append(bikeid)
     bike_ids.sort()
