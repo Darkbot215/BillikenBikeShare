@@ -629,12 +629,16 @@ def generateLockCodes():
     values = result.get("values", "")
     new_codes = []
     old_codes = []
+    changed = []
     for row in values:
         old_codes.append(int(row[2]))
         if int(row[0]) in skips:
             new_codes.append(int(row[2]))
         else:
-            new_codes.append(randint(1000,9999))
+            code = randint(1000,9999)
+            new_codes.append(code)
+            changed.append((int(row[0]), code))
+
     target = "Simple Bike Summary!C2:C"
     body = {
         'values': [[code] for code in new_codes]
@@ -644,6 +648,50 @@ def generateLockCodes():
         spreadsheetId=SPREADSHEET_ID, range=target,
         valueInputOption="USER_ENTERED", body=body).execute()
 
+    requests = [{
+
+        "insertDimension": {
+            "range": {
+                "sheetId": services.bike_sheet_dict["LockLog"],
+                "dimension": "ROWS",
+                "startIndex": 1,
+                "endIndex": 1+len(changed)
+            },
+            "inheritFromBefore": False
+        }
+
+    }]
+
+    now = services.now_local()
+    for idx, (ids,code) in enumerate(changed):
+        requests.extend([{
+
+            "updateCells": {
+                "range": {
+                    "sheetId": services.bike_sheet_dict["LockLog"],
+                    "startRowIndex": 1+idx,
+                    "endRowIndex": 2+idx,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": 3
+                },
+                "rows": [
+                    {
+                        "values": [
+                            {"userEnteredValue": {"numberValue": ids}},
+                            {"userEnteredValue": {"numberValue": code}},
+                            {"userEnteredValue": {"stringValue": now.strftime("%m/%d/%Y %H:%M:%S")}},
+                                                    ]
+                    }
+                ],
+                "fields": "userEnteredValue"
+            }
+
+        }])
+
+    services.get_sheets_service().spreadsheets().batchUpdate(
+        spreadsheetId=SPREADSHEET_ID,
+        body={"requests": requests}
+    ).execute()
 
     now = services.now_local()
     current_time = now.strftime("%I:%M %p")
