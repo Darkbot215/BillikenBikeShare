@@ -83,6 +83,78 @@ def main():
                     valueInputOption="USER_ENTERED", body=body).execute()
                 row[6] = update
 
+    #This section is for updating the lockpage
+    lockCodes = {}
+    for row in values:
+        lockCodes[str(row[0])] = int(row[2])
+    RANGE_NAME = "LockLog!A2:B"
+
+    sheet = services.get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+
+    loggedCodes = {}
+    for row in values:
+        if str(row[0]) in lockCodes.keys() and str(row[0]) not in loggedCodes.keys():
+            loggedCodes[str(row[0])] = int(row[1])
+        if loggedCodes.keys() == lockCodes.keys():
+            break
+    mismatches = []
+
+    for bike_id, code in lockCodes.items():
+        if bike_id not in loggedCodes or loggedCodes[bike_id] != code:
+            mismatches.append((bike_id,code))
+    if mismatches:
+        requests = [{
+
+            "insertDimension": {
+                "range": {
+                    "sheetId": services.bike_sheet_dict["LockLog"],
+                    "dimension": "ROWS",
+                    "startIndex": 1,
+                    "endIndex": 1 + len(mismatches)
+                },
+                "inheritFromBefore": False
+            }
+
+        }]
+
+        now = services.now_local()
+        for idx, (ids, code) in enumerate(mismatches):
+            requests.extend([{
+
+                "updateCells": {
+                    "range": {
+                        "sheetId": services.bike_sheet_dict["LockLog"],
+                        "startRowIndex": 1 + idx,
+                        "endRowIndex": 2 + idx,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 3
+                    },
+                    "rows": [
+                        {
+                            "values": [
+                                {"userEnteredValue": {"numberValue": int(ids)}},
+                                {"userEnteredValue": {"numberValue": code}},
+                                {"userEnteredValue": {"stringValue": now.strftime("%m/%d/%Y %H:%M:%S")}},
+                            ]
+                        }
+                    ],
+                    "fields": "userEnteredValue"
+                }
+
+            }])
+
+        services.get_sheets_service().spreadsheets().batchUpdate(
+            spreadsheetId=SPREADSHEET_ID,
+            body={"requests": requests}
+        ).execute()
+
+
+
 
 
 if __name__ == "__main__":
