@@ -100,7 +100,7 @@ def main():
     for row in values:
         if str(row[0]) in lockCodes.keys() and str(row[0]) not in loggedCodes.keys():
             loggedCodes[str(row[0])] = int(row[1])
-        if lockCodes <= loggedCodes:
+        if lockCodes.keys() <= loggedCodes.keys():
             break
     mismatches = []
 
