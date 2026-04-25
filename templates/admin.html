@@ -295,6 +295,7 @@
                 "Add Paid User to System": addPaidUser,
                 "Remove Paid Users": removePaidUsers,
                 "Give a User a Time Extension": giveTimeExtension,
+                "Let a User Check-out More Bikes": giveBonusBikes,
                 "Add a Hold on a User": addLongHold,
                 "Remove a hold from a User": removeLongHold,
                 "Force Check-in Bike": forceCheckinBike,
@@ -895,7 +896,57 @@
                 console.error(err);
             });
         }
-        
+        function giveBonusBikes() {
+            document.getElementById("toptext").innerText = "Remove/Add a User being able to check-out extra bikes";
+            document.getElementById("textboxA").innerHTML = "Enter the email of the user in the box below:"
+            document.getElementById("textboxB").innerHTML = "<p>Enter the number of extra bikes they are allowed check out:</p> Entering 1 when MaxBikes = 1 means that user can check out 2"
+
+
+            
+            document.getElementById("toptext").style.display = "block";
+            document.getElementById("textboxA").style.display = "block";
+            document.getElementById("textboxB").style.display = "block";
+
+            document.getElementById("input").style.display = "block";
+            document.getElementById("inputB").style.display = "block";
+
+            document.getElementById("buttonB").style.display = "block";
+            document.getElementById("buttonB").onclick = giveBonusBikesButton;
+        }
+        function giveBonusBikesButton(){
+            const overlay = document.getElementById("overlaySpinner");
+            overlay.style.display = "flex";
+            const user_email = document.getElementById("input").value;
+            const bonus_bikes = document.getElementById("inputB").value;
+
+
+            fetchWithTimeout("/giveBonusBikes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ loginCode,  user_email, bonus_bikes})
+            }).then(data =>{
+                overlay.style.display = "none";
+                hideAllPageElements();
+
+
+                document.getElementById("toptext").innerText = data.topText;
+                document.getElementById("textboxA").innerHTML = data.textbox;
+                
+                document.getElementById("toptext").style.display = "block";
+                document.getElementById("textboxA").style.display = "block";
+                document.getElementById("bikeTable").style.display = "table"; // or "block" if you prefer
+            }).catch(err => {
+                overlay.style.display = "none";
+                if (err.message.includes("<")) {
+                    document.getElementById("textboxA").innerHTML =
+                        `<b style="color:red">ERROR:</b> ${err.message}`;
+                } else {
+                    alert(`ERROR: ${err.message}`)
+                }
+                console.error(err);
+            });
+        }
+
         function forceCheckinBike() {
                         document.getElementById("toptext").innerText = "Check-in bikes";
             document.getElementById("textboxA").innerHTML = "<p> To check in mulitple bikes at one time enter all bikes to be checked in seperated by commas </p> <p> Example:<br> 4, 5, 6, 9 </p> Those bikes, will be set to status checked-in"

@@ -901,6 +901,65 @@ def giveTimeExtension():
         "textbox": "The user: "+email+" has been given a "+str(ext_time) +" hour extension"
     })
 
+@app.route("/giveBonusBikes", methods = ["POST"])
+def giveBonusBikes():
+    data = request.get_json()
+    passCode = int(data.get("loginCode", ""))
+    good_code, errormessage = adminLogin(True, passCode)
+    if not good_code:
+        return error(errormessage)
+    email = data.get("user_email", "")
+    email = email.strip().lower()
+    RANGE_NAME = "UserLog!A2:E"
+
+    sheet = services.get_sheets_service().spreadsheets()
+    result = sheet.values().get(
+        spreadsheetId=SPREADSHEET_ID,
+        range=RANGE_NAME
+    ).execute()
+    values = result.get("values", "")
+
+    user_list = [row[0] for row in values]
+
+
+    if email not in user_list:
+        return error("This user is not on the user list. They must be")
+    else:
+        email_idx = user_list.index(email)
+
+
+    try:
+        bonus_bikes = round(float(data.get("bonus_bikes", "")))
+    except:
+        return error("You must enter a whole number of hours")
+    associated_num = 0
+    if len(values[email_idx]) > 4:
+        code = values[email_idx][4]
+        if "X" in code:
+            position = code.index("X")
+            associated_num = int(code[position + 1: position + 3], 16)
+    new_hold = ""
+    if associated_num > bonus_bikes:
+        new_hold = services.holdUpdate(code, holdToRemove='X'*(associated_num-bonus_bikes))
+    else:
+        new_hold = services.holdUpdate(code, holdToAdd='X'*(bonus_bikes-associated_num))
+
+    target = "UserLog!E" + str(email_idx + 2)
+    body = {
+        'values': [[new_hold]]
+    }
+    sheet = services.get_sheets_service().spreadsheets()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID, range=target,
+        valueInputOption="USER_ENTERED", body=body).execute()
+
+
+
+    return jsonify({
+        "topText": "Success",
+        "textbox": "The user: "+email+" has been given the ability to check out "+str(bonus_bikes) +" bonus bikes"
+    })
+
 @app.route("/adminCheckoutBike", methods = ["POST"])
 def adminCheckoutBike():
     data = request.get_json()
