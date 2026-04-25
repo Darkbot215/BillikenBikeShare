@@ -1604,7 +1604,7 @@ def holdChecker(hold_code, max_amount = services.osSettings["MaxBikes"], tempBan
             if amt_checked_out >= max_amount:
                 hold = True
                 topText = services.siteResponse["Check-out"]["U-hold"][0]
-                textbox = services.siteResponse["Check-out"]["U-hold"][1]+" ("+str(max_amount)+") "+services.siteResponse["Check-out"]["U-hold"][2]+" You currently have "+int(code[position + 1: position +3], 16) +" bikes checked out"
+                textbox = services.siteResponse["Check-out"]["U-hold"][1]+" ("+str(max_amount)+") "+services.siteResponse["Check-out"]["U-hold"][2]+" You currently have "+str(int(code[position + 1: position +3], 16)) +" bikes checked out"
         if "P" in code:
             hold = True
             topText = services.siteResponse["Check-out"]["P-hold"][0]
