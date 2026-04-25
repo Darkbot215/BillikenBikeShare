@@ -308,6 +308,10 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = Non
                 if item in holdToRemove:
                     if item == "T" or item == "R":  # ignore T and R, the code already deals with them
                         pass
+                    elif item == "X" or item == "U":
+                        codeDict[item] = codeDict[item] - holdToRemove.count(item)
+                        if codeDict[item] < 0:
+                            codeDict[item] == 0
                     elif codeDict[item] > 0:
                         codeDict[item] = codeDict[item] - 1
         else: #I don't think we should be here? maybe email error code?
