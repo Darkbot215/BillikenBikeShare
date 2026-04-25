@@ -933,6 +933,7 @@ def giveBonusBikes():
     except:
         return error("You must enter a whole number of hours")
     associated_num = 0
+    code = ""
     if len(values[email_idx]) > 4:
         code = values[email_idx][4]
         if "X" in code:
