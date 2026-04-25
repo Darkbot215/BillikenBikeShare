@@ -284,16 +284,18 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = Non
     #Unpack the current dictionary
     if currentHold != "":
         if currentHold[0] == "#":
-            code = currentHold[1:6]
-            if "U" in code:
-                position = code.index("U")
-                amt_checked_out = int(code[position + 1], 16)
-                codeDict.update({"U":amt_checked_out})
+            code = currentHold[1:10]
+            options = ["U","X"]
+            for letter in options:
+                if letter in code:
+                    position = code.index(letter)
+                    associated_num = int(code[position + 1: position +3], 16)
+                    codeDict.update({letter:associated_num})
             options = ["T", "R"]
             for letter in options:
                 if letter in code:
                     now = now_local()
-                    hold_time = currentHold[7:]
+                    hold_time = currentHold[11:]
                     temp = timeExtractor(hold_time)
                     if temp > now: #This tells it not to change the time
                         codeDict.update({letter: temp})
@@ -318,7 +320,7 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = Non
                 T_time = now + timedelta(minutes=tempBanTime)
                 codeDict.update({"T": T_time})
                 del codeDict["R"]
-            elif codeDict[item] < 14:
+            elif codeDict[item] < 255:
                 codeDict[item] = codeDict[item] + 1
         else:
             if item == "T" or item == "R":
@@ -331,8 +333,8 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = Non
     codeString = ""
     timeString = ""
     for item in codeDict.keys():
-        if item == "U" and codeDict[item] > 0:
-            codeString = codeString+item+ f"{codeDict[item]:X}"
+        if (item == "U" or item == "X") and codeDict[item] > 0:
+            codeString = codeString+item+ f"{codeDict[item]:02X}"
         elif item == "T" or item == "R":
             if timeString == "":
                 timeString = codeDict[item].strftime("%m/%d/%Y %H:%M:%S")

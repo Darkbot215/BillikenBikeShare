@@ -1596,7 +1596,11 @@ def holdChecker(hold_code, max_amount = services.osSettings["MaxBikes"], tempBan
             # Could add an else here to delete it, but that is a later problem
         if "U" in code:
             position = code.index("U")
-            amt_checked_out = int(code[position + 1], 16)
+            amt_checked_out = int(code[position + 1:position+3], 16)
+
+            if "X" in code:
+                position = code.index("X")
+                max_amount = max_amount + int(code[position + 1:position+3], 16)
             if amt_checked_out >= max_amount:
                 hold = True
                 topText = services.siteResponse["Check-out"]["U-hold"][0]
