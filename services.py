@@ -317,11 +317,14 @@ def holdUpdate(currentHold, holdToAdd = "", holdToRemove = "", tempBanTime = Non
         if item in codeDict.keys():
             using = codeDict.get("U", 0)
             bonusBikes = codeDict.get("X", 0)
-            if item == "R" and using >= bonusBikes+osSettings["MaxBikes"]: #currently 'recently' counts as 30 minutes and so does temp ban
-                now = now_local()
-                T_time = now + timedelta(minutes=tempBanTime)
-                codeDict.update({"T": T_time})
-                del codeDict["R"]
+            if item == "R": #currently 'recently' counts as 30 minutes and so does temp ban
+                using = codeDict.get("U", 0)
+                bonusBikes = codeDict.get("X", 0)
+                if using >= bonusBikes+osSettings["MaxBikes"]:
+                    now = now_local()
+                    T_time = now + timedelta(minutes=tempBanTime)
+                    codeDict.update({"T": T_time})
+                    del codeDict["R"]
             elif codeDict[item] < 255:
                 codeDict[item] = codeDict[item] + 1
         else:
