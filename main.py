@@ -225,7 +225,7 @@ def checkOut(local_use = False, email = None, bike = None, helmet = None):
             "textbox": services.siteResponse["Check-out"]["NotYetVerified"][1]
         })
     hold_status = user_info[4]
-    if user_info[3] == "" and int(user_info[1]) >= 2:
+    if user_info[3] == "" and int(user_info[1]) >= services.osSettings["MaxBikes"]+1:
         hold_status = services.holdUpdate(hold_status, holdToAdd = "P", tempBanTime = services.osSettings["tempTimeout"])
         #This is a scuffed dues based hold. A permanent one should be added
     hold, output = holdChecker(hold_status) #EDIT MAX AMOUNT OF BIKES CHECKED OUT
@@ -1679,7 +1679,7 @@ def holdChecker(hold_code, max_amount = services.osSettings["MaxBikes"], tempBan
                 hold = True
                 topText = services.siteResponse["Check-out"]["U-hold"][0]
                 textbox = services.siteResponse["Check-out"]["U-hold"][1]+" ("+str(max_amount)+") "+services.siteResponse["Check-out"]["U-hold"][2]+" You currently have "+str(int(code[position + 1: position +3], 16)) +" bikes checked out"
-        if "P" in code:
+        if "P" in code and services.osSettings["paymentRequirement"]:
             hold = True
             topText = services.siteResponse["Check-out"]["P-hold"][0]
             textbox = services.siteResponse["Check-out"]["P-hold"][1]
