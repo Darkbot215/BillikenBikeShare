@@ -448,12 +448,12 @@
 
                         const buttonA = document.getElementById("buttonA");
                         buttonA.style.display = "block";
-                        buttonA.innerText = "Check-in";
+                        buttonA.innerText = "Return Bike";
                         buttonA.onclick = () => checkIn(bike,false);
                         document.getElementById("textboxB").innerHTML = "<b>"+ data.text2 + "</b>"//`If you have not checked out the bike but this bike is returned press below to report`;
                         const buttonB = document.getElementById("buttonB");
                         buttonB.style.display = "block";
-                        buttonB.innerText = "Report bike as returned";
+                        buttonB.innerText = "Report bike as checked-in by someone else";
                         buttonB.onclick = () => checkIn(bike,true);
 
                     }
