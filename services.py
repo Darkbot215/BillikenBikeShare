@@ -173,6 +173,7 @@ def load_settings():
     osSettings["MaxBikes"] = int(osSettings["MaxBikes"])
     osSettings["paymentRequirement"] = int(osSettings["paymentRequirement"]) == 1
     osSettings["overdueHoldLength"] = int(osSettings["overdueHoldLength"])
+    osSettings["verificationMode"] = int(osSettings["verificationMode"])
 
 
 def timeExtractor(time):

@@ -166,11 +166,12 @@ def bike_status():
         })
 
 @app.route("/checkOut",methods=["POST"])
-def checkOut():
-    data = request.get_json()
-    email = data.get("emailCheckOut", "")
-    if not email:
-      return jsonify({"error": "Email required"}), 400
+def checkOut(local_use = False, email = None, bike = None, helmet = None):
+    if not local_use:
+        data = request.get_json()
+        email = data.get("emailCheckOut", "")
+        if not email:
+          return jsonify({"error": "Email required"}), 400
     email = email.strip().lower()
     #Find if email is in list
     RANGE_NAME = "UserLog!A2:G"
@@ -185,15 +186,26 @@ def checkOut():
     if email in user_list:
         email_idx = user_list.index(email)
     else:
+        if services.osSettings["verificationMode"] == 2:
+            return jsonify({
+                "topText": services.siteResponse["Check-out"]["StrictVerify"][0],
+                "textbox": services.siteResponse["Check-out"]["StrictVerify"][1]
+            })
         #This email is not in user list. Now we need to do rigorous checking
         emailLegit = emailChecker(email)
         if emailLegit:
             logger.info("User "+email+" was added to the email list for the first time")
-            addUser(email)
-            return jsonify({
-        "topText": services.siteResponse["Check-out"]["FirstTime"][0],
-        "textbox": services.siteResponse["Check-out"]["FirstTime"][1]
-    })
+            if services.osSettings["verificationMode"] == 0:
+                addUserWithoutVerification(local_use = True,email = email)
+                bike = int(data.get("bikeCheckOut", ""))
+                helmet = data.get("helmetCheckOut", "")
+                return(checkOut(local_use=True,email = email, bike = bike, helmet = helmet))
+            else:
+                addUser(email)
+                return jsonify({
+            "topText": services.siteResponse["Check-out"]["FirstTime"][0],
+            "textbox": services.siteResponse["Check-out"]["FirstTime"][1]
+        })
 
         else:
             logger.debug("Email "+email+ " did not meet the requirements to be added")
@@ -233,8 +245,9 @@ def checkOut():
         range=RANGE_NAME
     ).execute()
     values = result.get("values", "")
-    bike = int(data.get("bikeCheckOut", ""))
-    helmet = data.get("helmetCheckOut", "")
+    if not local_use:
+        bike = int(data.get("bikeCheckOut", ""))
+        helmet = data.get("helmetCheckOut", "")
     helmet = int(helmet)
     bike_list = [int(row[0]) for row in values]
     if bike in bike_list:
@@ -712,14 +725,15 @@ def generateLockCodes():
     })
 
 @app.route("/addUserWithoutVerification", methods = ["POST"])
-def addUserWithoutVerification():
-    data = request.get_json()
-    passCode = int(data.get("loginCode", ""))
-    good_code, errormessage = adminLogin(True, passCode)
-    if not good_code:
-        return error(errormessage)
+def addUserWithoutVerification(local_use = False, email = False):
+    if not local_use:
+        data = request.get_json()
+        passCode = int(data.get("loginCode", ""))
+        good_code, errormessage = adminLogin(True, passCode)
+        if not good_code:
+            return error(errormessage)
 
-    email = data.get("user_email", "")
+        email = data.get("user_email", "")
     email = email.strip().lower()
     if not emailChecker(email, False):
         return error("The email sent was invalid")
