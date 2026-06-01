@@ -411,10 +411,10 @@
                     //1 is checked out, display 2 buttons
                     //2 is out for other reasons, simply display message (includes bike doesn't exist)
                     if(data.status == 0){
-                        document.getElementById("toptext").innerText = `Billiken Bike #${bike} is available`;
+                        document.getElementById("toptext").innerText = `Billiken Bike #${bike} `+data.title;
                         document.getElementById("textboxA").innerHTML = data.text1//`To check out the bike enter your SLU email in the textbox in the format:<br></br> john.smith@slu.edu`;
                         document.getElementById("input").style.display = "block";
-                        document.getElementById("textboxB").innerText = `If checking out helmet enter helmet number`;
+                        document.getElementById("textboxB").innerHTML = data.text2;
                         fillDropdown(data.helmetList,"None");
                         const dropdown = document.getElementById("mySelect");
 
@@ -429,7 +429,7 @@
 
                     }
                     if(data.status == 1){
-                       document.getElementById("toptext").innerText = `Billiken Bike #${bike} is checked-out`;
+                       document.getElementById("toptext").innerText = `Billiken Bike #${bike} `+data.title;
                         document.getElementById("textboxA").innerHTML = data.text1//`To check the bike back in press the button below <br></br>
                         //If there are any mechanical issues to report enter them in the box below`;
                         document.getElementById("photoInput").style.display = "block";
