@@ -450,7 +450,7 @@
                         buttonA.style.display = "block";
                         buttonA.innerText = "Return Bike";
                         buttonA.onclick = () => checkIn(bike,false);
-                        document.getElementById("textboxB").innerHTML = "<b>"+ data.text2 + "</b>"//`If you have not checked out the bike but this bike is returned press below to report`;
+                        document.getElementById("textboxB").innerHTML = data.text2//`If you have not checked out the bike but this bike is returned press below to report`;
                         const buttonB = document.getElementById("buttonB");
                         buttonB.style.display = "block";
                         buttonB.innerText = "Report bike as returned by someone else";
