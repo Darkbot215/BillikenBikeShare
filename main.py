@@ -137,7 +137,9 @@ def bike_status():
         logger.debug("Bike #"+str(bikeid)+" was returned as Checked-in")
         return jsonify({
             "status": 0,
+            "title": services.siteResponse["InitialPage"]["Checked-in"][0],
             "text1": services.siteResponse["InitialPage"]["Checked-in"][1],
+            "text2": services.siteResponse["InitialPage"]["Checked-in"][2],
             "helmetList": services.osSettings["HelmetList"]
         })
     elif values[idx][1] == "Checked-out":
@@ -145,6 +147,7 @@ def bike_status():
 
         return jsonify({
             "status":1,
+            "title": services.siteResponse["InitialPage"]["Checked-out"][0],
             "text1": services.siteResponse["InitialPage"]["Checked-out"][1],
             "text2": services.siteResponse["InitialPage"]["Checked-out"][2],
             "helmetList": services.osSettings["HelmetList"]
