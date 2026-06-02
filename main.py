@@ -1634,7 +1634,9 @@ def addUser(email, send_email = True):
     if send_email:
         services.send_gmail(services.get_gmail_service(),email, services.siteResponse["Emails"]["Verification"][0] + str(verification_code),message_body)
 
-def emailChecker(email,on = services.osSettings["EmailChecking"]):
+def emailChecker(email,on = None):
+    if on is None:
+        on = services.osSettings["EmailChecking"]
     period = False
     emailLegit = False
     try:
@@ -1653,7 +1655,9 @@ def emailChecker(email,on = services.osSettings["EmailChecking"]):
             break
     return emailLegit or not on
 
-def holdChecker(hold_code, max_amount = services.osSettings["MaxBikes"], tempBan = services.osSettings["TempBan"]):
+def holdChecker(hold_code):
+    max_amount = services.osSettings["MaxBikes"]
+    tempBan = services.osSettings["TempBan"]
     hold = False
     topText = ""
     textbox = ""
