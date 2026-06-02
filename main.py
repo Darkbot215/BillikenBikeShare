@@ -740,7 +740,7 @@ def addUserWithoutVerification(local_use = False, email = False):
 
         email = data.get("user_email", "")
     email = email.strip().lower()
-    if not emailChecker(email, False):
+    if not emailChecker(email, 0):
         return error("The email sent was invalid")
 
     RANGE_NAME = "UserLog!A2:G"
@@ -1639,6 +1639,7 @@ def addUser(email, send_email = True):
 def emailChecker(email,on = None):
     if on is None:
         on = services.osSettings["EmailChecking"]
+    #Changing on to 0, 1, or 2
     period = False
     emailLegit = False
     try:
@@ -1653,9 +1654,11 @@ def emailChecker(email,on = None):
             if ending == "slu.edu":
                 if period:
                     emailLegit = True
+                else:
+                    emailLegit = on == 1
                 break
             break
-    return emailLegit or not on
+    return emailLegit or on == 0
 
 def holdChecker(hold_code):
     max_amount = services.osSettings["MaxBikes"]

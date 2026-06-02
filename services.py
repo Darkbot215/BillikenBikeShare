@@ -169,7 +169,7 @@ def load_settings():
     osSettings["tempTimeout"] = int(osSettings["tempTimeout"])
     osSettings["checkOutLength"] = int(osSettings["checkOutLength"])
     osSettings["TempBan"] = int(osSettings["TempBan"]) == 1
-    osSettings["EmailChecking"] = int(osSettings["EmailChecking"]) == 1
+    osSettings["EmailChecking"] = int(osSettings["EmailChecking"])
     osSettings["MaxBikes"] = int(osSettings["MaxBikes"])
     osSettings["paymentRequirement"] = int(osSettings["paymentRequirement"]) == 1
     osSettings["overdueHoldLength"] = int(osSettings["overdueHoldLength"])
