@@ -174,6 +174,7 @@ def load_settings():
     osSettings["paymentRequirement"] = int(osSettings["paymentRequirement"]) == 1
     osSettings["overdueHoldLength"] = int(osSettings["overdueHoldLength"])
     osSettings["verificationMode"] = int(osSettings["verificationMode"])
+    osSettings["helmetsAvailable"] = int(osSettings["helmetsAvailable"]) == 1
 
 
 def timeExtractor(time):

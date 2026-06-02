@@ -140,7 +140,8 @@ def bike_status():
             "title": services.siteResponse["InitialPage"]["Checked-in"][0],
             "text1": services.siteResponse["InitialPage"]["Checked-in"][1],
             "text2": services.siteResponse["InitialPage"]["Checked-in"][2],
-            "helmetList": services.osSettings["HelmetList"]
+            "helmetList": services.osSettings["HelmetList"],
+            "showHelmet": services.osSettings["showHelmet"]
         })
     elif values[idx][1] == "Checked-out":
         logger.debug("Bike #"+str(bikeid)+" was returned as Checked-out")
@@ -150,7 +151,8 @@ def bike_status():
             "title": services.siteResponse["InitialPage"]["Checked-out"][0],
             "text1": services.siteResponse["InitialPage"]["Checked-out"][1],
             "text2": services.siteResponse["InitialPage"]["Checked-out"][2],
-            "helmetList": services.osSettings["HelmetList"]
+            "helmetList": services.osSettings["HelmetList"],
+            "showHelmet": services.osSettings["showHelmet"]
         })
     else:
         logger.debug("Bike #"+str(bikeid)+" was returned as a different status")

@@ -417,10 +417,12 @@
                         document.getElementById("textboxB").innerHTML = data.text2;
                         fillDropdown(data.helmetList,"None");
                         const dropdown = document.getElementById("mySelect");
+                        if (data.showHelmet) {
 
                         dropdown.style.display = "block";
                         const textboxB = document.getElementById("textboxB");
                         textboxB.parentNode.insertBefore(textboxB, dropdown );
+                        }
 
                         const button2 = document.getElementById("buttonB")
                         button2.innerText = "Submit"
@@ -440,10 +442,12 @@
                         input.placeholder = "Describe any issues here (or leave blank if none)"
                         fillDropdown(data.helmetList, "Enter helmet # here (If used)");
                         const dropdown = document.getElementById("mySelect");
+                        if (data.showHelmet) {
 
                         dropdown.style.display = "block";
 
                         input.parentNode.insertBefore(dropdown, input);
+                        }
 
 
                         const buttonA = document.getElementById("buttonA");
