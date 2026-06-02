@@ -21,36 +21,14 @@ def verificationInFuture(user_info):
             return False
     return True
 
-def dateExtractor(date):
-    date_slash = [i for i, x in enumerate(date) if x == ('/')]
-    date_dash = [i for i, x in enumerate(date) if x == ('-')]
-    if len(date_slash) > 1:
-        year = int(date[date_slash[1] + 1:])
-        month = int(date[0:date_slash[0]])
-        day = int(date[date_slash[0] + 1:date_slash[1]])
 
-    elif len(date_dash) > 1:
-        year = int(date[date_dash[1] + 1:])
-        month = int(date[0:date_dash[0]])
-        day = int(date[date_dash[0] + 1:date_dash[1]])
-    else:
-        # Send an error email
-        return None
-    if year < 2000:
-        year = year + 2000
-    try:
-        temp = datetime(year, month, day, tzinfo=services.LOCAL_TZ)
-        return temp.date()
-    except:
-        return None
-        # Should email admins here
 
 
 def duesExpired(user_info):
     raw_date = user_info[3].strip()
     if(raw_date == ""):
         return False
-    temp = dateExtractor(raw_date)
+    temp = services.dateExtractor(raw_date)
     if temp is None:
         print(f"Error: Could not extract date from {raw_date}")
         return False  # If we can't read it, we assume NOT expired (or handle error)
@@ -63,14 +41,14 @@ def duesExpired(user_info):
 
 def experationUpdate(user_info):
     raw_date = user_info[2].strip()
-    expo = dateExtractor(raw_date)
+    expo = services.dateExtractor(raw_date)
     if expo is None:
         print(f"Error: Could not extract date from {raw_date}")
         return False, None  # If we can't read it, we assume NOT expired (or handle error)
     raw_date = user_info[3].strip()
     if (raw_date == ""):
         return False, None
-    dues = dateExtractor(raw_date)
+    dues = services.dateExtractor(raw_date)
     if dues is None:
         print(f"Error: Could not extract date from {raw_date}")
         return False, None  # If we can't read it, we assume NOT expired (or handle error)
@@ -81,7 +59,7 @@ def experationUpdate(user_info):
 def userExpired(user_info):
     print(user_info)
     raw_date = user_info[2].strip()
-    expo = dateExtractor(raw_date)
+    expo = services.dateExtractor(raw_date)
     if expo is None:
         print(f"Error: Could not extract date from {raw_date}")
         return False  # If we can't read it, we assume NOT expired (or handle error)
