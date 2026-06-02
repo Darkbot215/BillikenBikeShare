@@ -46,8 +46,8 @@ services.load_settings()
 logger.info("Server started")
 
 
-admin_code = [3, services.now_local()+timedelta(days=2)]
-#admin_code = [None, None]
+#admin_code = [3, services.now_local()+timedelta(days=2)]
+admin_code = [None, None]
 
 def log_memory():
     import psutil
