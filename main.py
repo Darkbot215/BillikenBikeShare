@@ -565,6 +565,7 @@ def generateAdminCode():
     email = services.osSettings["AdminEmails"][0]
 
     if services.osSettings["adminLoginSafety"]:
+        email = services.osSettings["AdminEmails"][0]
         RANGE_NAME = "UserLog!A2:G"
 
         sheet = services.get_sheets_service().spreadsheets()
@@ -584,6 +585,7 @@ def generateAdminCode():
         sheet.values().update(
             spreadsheetId=SPREADSHEET_ID, range=target,
             valueInputOption="USER_ENTERED", body=body).execute()
+    email = services.osSettings["AdminEmails"]
     full_url = services.osSettings["PageUrl"]+"/admin?AdminPass="+str(admin_code[0])
     services.send_gmail(services.get_gmail_service(),email, "Admin temp code: "+str(admin_code[0]),"<p> For 15 minutes of access the new admin code is: "+str(admin_code[0])
                + "</p> For even easier access use this link: <br> <a href="+full_url+">"+full_url+"</a>")
