@@ -1,0 +1,26 @@
+name: Repository Keepalive
+
+on:
+  # Run once per week. Any schedule is fine as long as it's
+  # more frequent than GitHub's 60-day inactivity limit.
+  schedule:
+    - cron: "0 12 * * 1" # Every Monday at 12:00 UTC
+
+  # Allow manual execution from the GitHub Actions page.
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  keepalive:
+    name: Keep Repository Active
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Keep scheduled workflows active
+        uses: gautamkrishnar/keepalive-workflow@v2
